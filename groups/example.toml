@@ -1,0 +1,26 @@
+# Draft of the per-group config format (not read by anything yet; Phase 2).
+# Never put passwords or other sensitive data in this repository.
+home_pages = ["https://www.regalstaffing.com/portal"]
+hide_address_bar = true
+allow_popups = true
+
+[session]
+idle_minutes = 6
+warning_seconds = 30
+end_session_button = true
+
+[allow]
+domains = ["regalstaffing.com", "myavionte.com", "tcs.adp.com", "irs.gov"]
+urls = ["vimeo.com/589485470", "google.com/maps"]
+
+[devices]
+usb_storage = false
+printing = false
+on_screen_keyboard = false
+
+[updates]
+channel = "stable"
+reboot_window = "02:00-04:00"
+
+# Optional: move this device to another group on next boot
+# config_url = "https://raw.githubusercontent.com/regalstaffing/kiosk-os-2026/main/groups/testing.toml"
