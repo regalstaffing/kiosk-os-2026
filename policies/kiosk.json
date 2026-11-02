@@ -1,6 +1,11 @@
 {
   "URLBlocklist": [
-    "*"
+    "*",
+    "chrome://*",
+    "chrome-untrusted://*",
+    "devtools://*",
+    "view-source:*",
+    "file://*"
   ],
   "URLAllowlist": [
     "applyregal.com",
@@ -103,5 +108,9 @@
   "BookmarkBarEnabled": false,
   "DefaultBrowserSettingEnabled": false,
   "MetricsReportingEnabled": false,
-  "PromotionalTabsEnabled": false
+  "PromotionalTabsEnabled": false,
+  "NewTabPageLocation": "https://www.regalstaffing.com/portal",
+  "ShowHomeButton": true,
+  "SavingBrowserHistoryDisabled": true,
+  "EnableMediaRouter": false
 }

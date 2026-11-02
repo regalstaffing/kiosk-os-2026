@@ -16,7 +16,7 @@ RuntimeDirectory=kiosk
 RuntimeDirectoryMode=0700
 # Disable Ctrl+Alt+Fn console switching and Ctrl+Alt+Backspace
 Environment=XKB_DEFAULT_OPTIONS=srvrkeys:none
-ExecStart=/usr/bin/cage -d -- /usr/bin/chromium --kiosk --no-first-run --noerrdialogs --ozone-platform=wayland --user-data-dir=/run/kiosk/chromium
+ExecStart=/usr/bin/cage -d -- /usr/bin/chromium --no-first-run --noerrdialogs --ozone-platform=wayland --user-data-dir=/run/kiosk/chromium
 Restart=always
 RestartSec=2
 

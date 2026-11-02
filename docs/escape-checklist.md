@@ -15,7 +15,9 @@ On a locked kiosk every item must FAIL (do nothing, or show a blocked page). Run
 - [ ] Ctrl+O, Ctrl+S, Ctrl+P (open, save, print)
 - [ ] Ctrl+J, Ctrl+H (downloads, history)
 - [ ] Right-click menu: "Inspect", "Save as", "Open link in new window"
-- [ ] Typing chrome://settings, chrome://flags, file:///, about:blank, view-source:… (if an address bar is reachable)
+- [ ] Typing in the address bar: chrome://settings, chrome://flags, chrome://history, file:///, view-source:https://google.com
+- [ ] Typing a site that is not on the list (e.g. facebook.com)
+- [ ] Three-dot menu: Settings, History, Downloads, Extensions, More tools
 - [ ] A link or redirect from an allowed site to a site not on the list
 - [ ] A pop-up to a site not on the list
 - [ ] Downloading a file from an allowed site

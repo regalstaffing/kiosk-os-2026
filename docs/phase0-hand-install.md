@@ -57,7 +57,25 @@ Phase 0 has no admin screen yet. To get a shell: reboot, and in the GRUB menu pr
 add `systemd.unit=multi-user.target` to the end of the `linux` line, then Ctrl+X. Log in as root.
 (This is possible because tamper protection, M9, is suspended during setup.)
 
-## 4. Test
+## 4. Updating a test kiosk
+
+When the repository changes, get an admin shell (section 3), then type each line and press Enter:
+
+```sh
+git -C /opt/kiosk-os pull
+```
+
+```sh
+sh /opt/kiosk-os/scripts/setup-phase0.sh
+```
+
+```sh
+reboot
+```
+
+Use the folder name you cloned into (for example `/opt/Kiosk-os`); upper and lower case matter.
+
+## 5. Test
 
 Work through `docs/escape-checklist.md` and note anything that gets through, plus any of your
 real sites (Avionte, ADP, sign-in pages) that fail to load or break partway.
