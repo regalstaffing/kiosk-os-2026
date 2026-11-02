@@ -21,7 +21,7 @@ Dell laptop (Intel e1000e Ethernet), Debian 13, Chromium 156, tested 2026-11-02.
 | Link/redirect to non-listed site | Blocked | |
 | Pop-up to non-listed site | Not tested yet | |
 | Download from allowed site | Not tested yet | |
-| USB stick | Nothing appeared | Confirm with `lsblk` from admin shell |
+| USB stick | Detected as sdb (not blocked) | Fixed: drivers blocked at boot via kernel command line and initramfs |
 | Ctrl+W on last tab | Browser restarts in seconds | |
-| Reboot clears logins | History page blocked, so not checked | Check by logging in to a site, then rebooting |
+| Reboot clears logins | Gmail signed out after reboot | |
 | Network | Ethernet was not configured by installer | Fixed: setup script enables all Ethernet ports |

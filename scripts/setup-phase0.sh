@@ -39,6 +39,11 @@ install -D -m 644 "$REPO/system/logind-kiosk.conf"     /etc/systemd/logind.conf.
 install -D -m 644 "$REPO/system/sysctl-kiosk.conf"     /etc/sysctl.d/90-kiosk.conf
 install -D -m 644 "$REPO/system/modprobe-kiosk.conf"   /etc/modprobe.d/kiosk.conf
 install -D -m 644 "$REPO/system/kiosk.service"         /etc/systemd/system/kiosk.service
+install -D -m 644 "$REPO/system/grub-kiosk.cfg"        /etc/default/grub.d/kiosk.cfg
+
+echo "==> Applying USB storage block to the boot files"
+update-initramfs -u
+update-grub
 
 systemctl daemon-reload
 systemctl set-default graphical.target
