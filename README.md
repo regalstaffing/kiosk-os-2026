@@ -15,6 +15,7 @@ Debian 13 + the cage Wayland compositor + Chromium locked down with enterprise p
 | `docs/phase0-hand-install.md` | Phase 0: set up a test kiosk by hand |
 | `docs/escape-checklist.md` | Things to try that must all fail on a locked kiosk |
 | `policies/kiosk.json` | Chromium managed policy (allow list, lockdown) |
+| `scripts/setup-phase0.sh` | Phase 0 setup script (run as root) |
 | `system/` | systemd unit and system config files |
 | `groups/` | Per-group config files (format draft; used from Phase 2) |
 

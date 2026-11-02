@@ -16,27 +16,40 @@ You need: a USB stick (1 GB+), the PC (wired network recommended), and about 30 
 
 ## 2. Install the kiosk pieces
 
-Get this repository's files onto the PC (from the PC: `apt install -y git && git clone https://github.com/regalstaffing/kiosk-os-2026 /opt/kiosk-os`), then:
+Type each command below on its own line and press Enter after each one.
+Wait for one to finish (the `root@...#` prompt comes back) before typing the next.
 
 ```sh
-apt install -y cage chromium fonts-noto
-useradd --create-home --shell /usr/sbin/nologin kiosk
+apt update
+```
 
-mkdir -p /etc/chromium/policies/managed
-cp /opt/kiosk-os/policies/kiosk.json /etc/chromium/policies/managed/kiosk.json
+```sh
+apt install -y git
+```
 
-mkdir -p /etc/systemd/logind.conf.d
-cp /opt/kiosk-os/system/logind-kiosk.conf  /etc/systemd/logind.conf.d/kiosk.conf
-cp /opt/kiosk-os/system/sysctl-kiosk.conf  /etc/sysctl.d/90-kiosk.conf
-cp /opt/kiosk-os/system/modprobe-kiosk.conf /etc/modprobe.d/kiosk.conf
-cp /opt/kiosk-os/system/kiosk.service /etc/systemd/system/kiosk.service
+```sh
+git clone https://github.com/regalstaffing/kiosk-os-2026 /opt/kiosk-os
+```
 
-systemctl set-default graphical.target
-systemctl enable kiosk.service
+```sh
+sh /opt/kiosk-os/scripts/setup-phase0.sh
+```
+
+The script installs the browser, creates the `kiosk` user, and copies in the lockdown
+settings. It takes a few minutes and is safe to run again if anything goes wrong.
+When it prints `Done.`, type:
+
+```sh
 reboot
 ```
 
 The PC should boot straight into Chromium on the Regal portal and the two looping videos.
+
+### If something goes wrong
+
+- **Endless "Tried to start delayed item ... but failed" warnings:** press Ctrl+C, run
+  `apt clean`, then `apt update`, then run the setup script again.
+- **To update an already cloned copy:** `git -C /opt/kiosk-os pull`
 
 ## 3. Getting back in (admin)
 
