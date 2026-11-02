@@ -1,0 +1,26 @@
+#!/bin/sh
+# Admin helper for the kiosk console. Run as root.
+REPO=$(cat /etc/kiosk/repo 2>/dev/null || echo /opt/kiosk-os)
+
+case "$1" in
+    back)
+        chvt 1
+        ;;
+    end-session)
+        systemctl restart kiosk.service && chvt 1
+        ;;
+    update)
+        git -C "$REPO" pull && sh "$REPO/scripts/setup.sh"
+        echo "Type 'reboot' to apply."
+        ;;
+    status)
+        systemctl --no-pager status kiosk.service kiosk-sessiond.service
+        ;;
+    *)
+        echo "Usage: kiosk back | end-session | update | status"
+        echo "  back         return to the kiosk screen"
+        echo "  end-session  wipe the current session and return"
+        echo "  update       pull the latest kiosk files and apply them"
+        echo "  status       show the kiosk services"
+        ;;
+esac

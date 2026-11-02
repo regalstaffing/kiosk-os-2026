@@ -1,0 +1,10 @@
+[Unit]
+Description=Kiosk session manager (End session page, idle wipe, admin key)
+
+[Service]
+ExecStart=/usr/local/sbin/kiosk-sessiond
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

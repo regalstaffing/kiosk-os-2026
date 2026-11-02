@@ -1,0 +1,3 @@
+# /etc/kiosk/settings — local kiosk settings (Phase 2 moves these to the group config)
+# Wipe the session after this many minutes with no keyboard, mouse or touch input. 0 = never.
+IDLE_MINUTES=6

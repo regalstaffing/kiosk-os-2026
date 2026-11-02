@@ -8,6 +8,7 @@
     "file://*"
   ],
   "URLAllowlist": [
+    "http://127.0.0.1:8099",
     "applyregal.com",
     "regalstaffing.com",
     "avionte.regalstaffing.com",
@@ -79,7 +80,7 @@
     "youtube.com",
     "benefits.hooray360.com"
   ],
-  "HomepageLocation": "https://www.regalstaffing.com/portal",
+  "HomepageLocation": "http://127.0.0.1:8099/end-session",
   "HomepageIsNewTabPage": false,
   "RestoreOnStartup": 4,
   "RestoreOnStartupURLs": [

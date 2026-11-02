@@ -1,0 +1,210 @@
+#!/usr/bin/python3
+"""Kiosk session manager.
+
+- Serves the "End session" page at http://127.0.0.1:8099/ (the browser's Home button).
+- Wipes the session after IDLE_MINUTES without keyboard, mouse or touch input.
+- Opens a password-protected admin console on Ctrl+Alt+Shift+A.
+
+A session is wiped by restarting kiosk.service: its browser profile lives in a
+runtime directory that systemd deletes whenever the service stops.
+"""
+import glob
+import http.server
+import os
+import select
+import struct
+import subprocess
+import sys
+import threading
+import time
+
+SETTINGS = "/etc/kiosk/settings"
+PORT = 8099
+ORIGIN = "http://127.0.0.1:%d" % PORT
+
+# struct input_event on 64-bit Linux: timeval (2 longs), type, code, value
+EVENT = struct.Struct("llHHi")
+EV_KEY = 1
+# Ctrl, Alt, Shift (left or right) + A
+ADMIN_COMBO = ({29, 97}, {56, 100}, {42, 54}, {30})
+
+END_PAGE = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>End session</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body { font: 20px/1.5 system-ui, sans-serif; background: #f4f5f7; color: #1d2330;
+       display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+main { background: #fff; padding: 40px 48px; border-radius: 12px; max-width: 560px;
+       box-shadow: 0 2px 12px rgba(0,0,0,.08); text-align: center; }
+h1 { font-size: 30px; margin: 0 0 12px; }
+p { margin: 0 0 28px; color: #4a5263; }
+button { font: inherit; padding: 12px 28px; border-radius: 8px; border: 0; margin: 0 8px; cursor: pointer; }
+.end { background: #c62828; color: #fff; }
+.cancel { background: #e3e6eb; color: #1d2330; }
+</style></head>
+<body><main>
+<h1>End your session?</h1>
+<p>This closes every page and signs you out of all websites, so the next person
+can't see your information.</p>
+<form method="post" action="/end-session" style="display:inline">
+<button class="end" type="submit">Yes, end my session</button></form>
+<button class="cancel" type="button"
+  onclick="history.length > 1 ? history.back() : location.replace('https://www.regalstaffing.com/portal')">Cancel</button>
+</main></body></html>
+"""
+
+ENDING_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Ending session</title></head>
+<body style="font:24px system-ui,sans-serif;text-align:center;padding-top:30vh">
+Ending session&hellip;</body></html>
+"""
+
+
+def log(msg):
+    print(msg, flush=True)
+
+
+def load_settings():
+    settings = {"IDLE_MINUTES": "6"}
+    try:
+        with open(SETTINGS) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    settings[key.strip()] = value.strip()
+    except FileNotFoundError:
+        pass
+    return settings
+
+
+def kiosk_on_screen():
+    """True when the kiosk is running and its console (tty1) is the one shown."""
+    if subprocess.run(["systemctl", "is-active", "--quiet", "kiosk.service"]).returncode != 0:
+        return False
+    try:
+        with open("/sys/class/tty/tty0/active") as f:
+            return f.read().strip() == "tty1"
+    except OSError:
+        return True
+
+
+class Session:
+    def __init__(self, idle_seconds):
+        self.lock = threading.Lock()
+        self.idle_seconds = idle_seconds
+        self.last_input = time.monotonic()
+        self.used = False  # any input since the last wipe
+
+    def touch(self):
+        with self.lock:
+            self.last_input = time.monotonic()
+            self.used = True
+
+    def end(self, reason):
+        with self.lock:
+            self.used = False
+            self.last_input = time.monotonic()
+        log("ending session: %s" % reason)
+        subprocess.run(["systemctl", "restart", "kiosk.service"])
+
+    def check_idle(self):
+        with self.lock:
+            due = (self.used and self.idle_seconds > 0
+                   and time.monotonic() - self.last_input >= self.idle_seconds)
+        if due and kiosk_on_screen():
+            self.end("idle")
+
+
+def open_admin_console():
+    log("admin console requested")
+    subprocess.run(["systemctl", "start", "getty@tty2.service"])
+    subprocess.run(["chvt", "2"])
+
+
+def input_loop(session):
+    fds = {}
+    pressed = set()
+    last_scan = 0.0
+    while True:
+        if time.monotonic() - last_scan > 10:  # pick up newly plugged devices
+            known = set(fds.values())
+            for path in glob.glob("/dev/input/event*"):
+                if path not in known:
+                    try:
+                        fds[os.open(path, os.O_RDONLY | os.O_NONBLOCK)] = path
+                    except OSError:
+                        pass
+            last_scan = time.monotonic()
+
+        ready, _, _ = select.select(list(fds), [], [], 5)
+        for fd in ready:
+            try:
+                data = os.read(fd, EVENT.size * 64)
+            except OSError:
+                data = b""
+            if not data:  # device unplugged
+                os.close(fd)
+                del fds[fd]
+                continue
+            session.touch()
+            for offset in range(0, len(data) - EVENT.size + 1, EVENT.size):
+                _, _, etype, code, value = EVENT.unpack_from(data, offset)
+                if etype != EV_KEY:
+                    continue
+                if value == 1:
+                    pressed.add(code)
+                    if all(pressed & group for group in ADMIN_COMBO):
+                        pressed.clear()
+                        open_admin_console()
+                elif value == 0:
+                    pressed.discard(code)
+        session.check_idle()
+
+
+def make_handler(session):
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def send_page(self, status, body):
+            data = body.encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_GET(self):
+            if self.path in ("/", "/end-session"):
+                self.send_page(200, END_PAGE)
+            else:
+                self.send_page(404, "Not found")
+
+        def do_POST(self):
+            # Only this page may end a session, not scripts on other sites
+            if self.path != "/end-session" or self.headers.get("Origin") != ORIGIN:
+                self.send_page(403, "Forbidden")
+                return
+            self.send_page(200, ENDING_PAGE)
+            threading.Thread(target=session.end, args=("button",), daemon=True).start()
+
+        def log_message(self, fmt, *args):
+            pass
+
+    return Handler
+
+
+def main():
+    settings = load_settings()
+    try:
+        idle_seconds = int(float(settings["IDLE_MINUTES"]) * 60)
+    except ValueError:
+        idle_seconds = 360
+    session = Session(idle_seconds)
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), make_handler(session))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    log("kiosk-sessiond started, idle wipe after %d s" % idle_seconds)
+    input_loop(session)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

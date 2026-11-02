@@ -12,13 +12,17 @@ Debian 13 + the cage Wayland compositor + Chromium locked down with enterprise p
 
 | Path | What it is |
 | --- | --- |
+| `docs/install.md` | Install a kiosk from the USB installer; admin console |
 | `docs/phase0-hand-install.md` | Phase 0: set up a test kiosk by hand |
 | `docs/escape-checklist.md` | Things to try that must all fail on a locked kiosk |
 | `policies/kiosk.json` | Chromium managed policy (allow list, lockdown) |
-| `scripts/setup-phase0.sh` | Phase 0 setup script (run as root) |
+| `scripts/setup.sh` | Setup script (run by the installer, or by hand as root) |
+| `agent/` | Session manager (End session page, idle wipe, admin key) and `kiosk` admin command |
+| `installer/` | Preseed and boot menus for the USB installer, and its build script |
 | `system/` | systemd unit and system config files |
 | `groups/` | Per-group config files (format draft; used from Phase 2) |
 
 ## Status
 
-Phase 0 (spike): prove that the current whitelist works as Chromium policy on real hardware.
+- Phase 0 (spike): done, see `docs/phase0-results.md`.
+- Phase 1 (locked kiosk, USB installer, sessions): in testing.

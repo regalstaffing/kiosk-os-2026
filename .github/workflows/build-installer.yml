@@ -1,0 +1,34 @@
+name: Build USB installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "installer/**"
+      - ".github/workflows/build-installer.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y xorriso
+
+      - name: Build installer image
+        run: sh installer/build-iso.sh kiosk-os-installer.iso
+
+      - name: Publish as the "installer-latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete installer-latest --yes --cleanup-tag || true
+          gh release create installer-latest kiosk-os-installer.iso \
+            --title "Kiosk OS USB installer (latest)" \
+            --notes "Built from ${GITHUB_SHA}. Write to a USB stick with Rufus or balenaEtcher. Installing ERASES the computer's disk." \
+            --target "${GITHUB_SHA}"
