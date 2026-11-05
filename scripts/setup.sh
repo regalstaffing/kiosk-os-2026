@@ -10,7 +10,7 @@ REPO=$(cd "$(dirname "$0")/.." && pwd)
 echo "==> Installing packages"
 apt-get update
 # fonts-noto-core is small; the full fonts-noto set pulls in ~1 GB of CJK fonts
-apt-get install -y cage chromium fonts-noto-core python3 kbd git
+apt-get install -y cage chromium fonts-noto-core fontconfig python3 kbd git
 
 echo "==> Enabling wired network on every Ethernet port"
 # The Debian installer configures only the interface used during install
