@@ -5,4 +5,5 @@
   kiosk end-session  wipe the current session and return
   kiosk update       pull the latest kiosk files and apply them
   kiosk status       show the kiosk services
+  kiosk check        show versions and settings for troubleshooting
 

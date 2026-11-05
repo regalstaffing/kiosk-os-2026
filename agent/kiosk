@@ -16,11 +16,19 @@ case "$1" in
     status)
         systemctl --no-pager status kiosk.service kiosk-sessiond.service
         ;;
+    check)
+        echo "Kiosk files version: $(git -C "$REPO" log -1 --format='%h %cd' --date=short)"
+        echo "Browser home settings:"
+        grep -iE '"(Homepage|NewTabPage|ShowHomeButton)' /etc/chromium/policies/managed/kiosk.json
+        echo "End session page: $(python3 -c 'import urllib.request;print(urllib.request.urlopen("http://127.0.0.1:8099/").status)' 2>&1 | tail -1)"
+        echo "Idle wipe: $(grep IDLE_MINUTES /etc/kiosk/settings)"
+        ;;
     *)
-        echo "Usage: kiosk back | end-session | update | status"
+        echo "Usage: kiosk back | end-session | update | status | check"
         echo "  back         return to the kiosk screen"
         echo "  end-session  wipe the current session and return"
         echo "  update       pull the latest kiosk files and apply them"
         echo "  status       show the kiosk services"
+        echo "  check        show versions and settings for troubleshooting"
         ;;
 esac
