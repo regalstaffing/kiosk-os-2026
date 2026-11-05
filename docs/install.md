@@ -18,7 +18,7 @@ You need: a USB stick (1 GB+, it will be erased), a wired network connection, an
 4. If the PC has more than one disk, pick the internal one (not the USB stick).
 5. Wait about 10 to 20 minutes. Remove the USB stick when the PC restarts.
 
-The PC reboots straight into the kiosk.
+On first start the PC finishes the kiosk setup (a few minutes of text on screen), restarts once more, and then boots straight into the kiosk.
 
 ## 3. Admin console
 

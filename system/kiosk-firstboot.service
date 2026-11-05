@@ -1,0 +1,16 @@
+[Unit]
+Description=Kiosk first-boot setup
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=!/etc/kiosk/installed
+
+[Service]
+Type=oneshot
+StandardOutput=journal+console
+StandardError=journal+console
+ExecStart=/bin/sh /opt/kiosk-os/scripts/setup.sh
+ExecStartPost=/bin/sh -c 'touch /etc/kiosk/installed; systemctl disable kiosk-firstboot.service; systemctl reboot'
+TimeoutStartSec=30min
+
+[Install]
+WantedBy=multi-user.target
