@@ -22,8 +22,10 @@ Environment=XKB_DEFAULT_OPTIONS=srvrkeys:none
 ExecStart=/usr/bin/cage -d -- /usr/local/bin/kiosk-browser
 Restart=always
 RestartSec=2
-# The profile is wiped anyway, so do not wait long for a clean exit
-TimeoutStopSec=5
+# The profile is wiped anyway: end Chromium at once instead of letting it
+# shut down slowly, and never wait long for a clean exit
+ExecStop=-/usr/bin/pkill -KILL -u kiosk -f /usr/lib/chromium/
+TimeoutStopSec=3
 
 [Install]
 WantedBy=graphical.target
