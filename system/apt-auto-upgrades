@@ -1,0 +1,7 @@
+// /etc/apt/apt.conf.d/20auto-upgrades
+// Install Debian security updates (including Chromium) every day in the
+// background. A new Chromium takes effect at the next session; kernel
+// updates at the next reboot.
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";

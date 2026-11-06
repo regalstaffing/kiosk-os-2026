@@ -11,7 +11,7 @@ echo "==> Installing packages"
 apt-get update
 # fonts-noto-core is small; the full fonts-noto set pulls in ~1 GB of CJK fonts
 apt-get install -y cage chromium fonts-noto-core fontconfig python3 kbd git \
-    python3-gi gir1.2-gtk-3.0 network-manager plymouth plymouth-themes
+    python3-gi gir1.2-gtk-3.0 network-manager plymouth plymouth-themes unattended-upgrades
 
 echo "==> Handing networking to NetworkManager"
 # NetworkManager connects any wired port automatically and lets the admin
@@ -47,6 +47,7 @@ install -D -m 755 "$REPO/agent/kiosk-splash"           /usr/local/bin/kiosk-spla
 install -D -m 644 "$REPO/system/kiosk-admin.service"   /etc/systemd/system/kiosk-admin.service
 install -D -m 644 "$REPO/system/profile-timeout.sh"    /etc/profile.d/kiosk-timeout.sh
 install -D -m 644 "$REPO/system/motd"                  /etc/motd
+install -D -m 644 "$REPO/system/apt-auto-upgrades"     /etc/apt/apt.conf.d/20auto-upgrades
 install -D -m 644 "$REPO/system/hwdb-kiosk.hwdb"       /etc/udev/hwdb.d/90-kiosk.hwdb
 systemd-hwdb update
 udevadm trigger --subsystem-match=input --action=change 2>/dev/null || true
