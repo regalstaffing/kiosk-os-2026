@@ -141,16 +141,34 @@ class Session:
             subprocess.run(["systemctl", "start", "kiosk.service"])
 
 
+ADMIN_LOCK = threading.Lock()
+
+
+def active_vt():
+    try:
+        with open("/sys/class/tty/tty0/active") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
 def open_admin_console():
-    log("admin screen requested")
-    # Wait until the admin screen has started, then switch the console away
-    # and back. Without the bounce the new screen sometimes stays blank until
-    # the key combo is pressed a second time.
-    subprocess.run(["systemctl", "start", "kiosk-admin.service"])
-    time.sleep(1.5)
-    subprocess.run(["chvt", "2"])
-    time.sleep(0.3)
-    subprocess.run(["chvt", "1"])
+    # Runs in its own thread with time limits, so a slow or stuck step can
+    # never freeze key handling or the idle checks.
+    if not ADMIN_LOCK.acquire(blocking=False):
+        return
+    try:
+        log("admin screen requested")
+        # Stop the kiosk screen fully before the admin screen takes over the
+        # display; starting both at once could leave a blank screen.
+        subprocess.run(["systemctl", "stop", "kiosk.service"], timeout=20)
+        subprocess.run(["systemctl", "start", "kiosk-admin.service"], timeout=20)
+        if active_vt() != "tty1":  # e.g. coming from the text console
+            subprocess.run(["chvt", "1"], timeout=5)
+    except subprocess.TimeoutExpired:
+        log("admin screen start timed out")
+    finally:
+        ADMIN_LOCK.release()
 
 
 def input_loop(session):
@@ -187,7 +205,7 @@ def input_loop(session):
                     pressed.add(code)
                     if all(pressed & group for group in ADMIN_COMBO):
                         pressed.clear()
-                        open_admin_console()
+                        threading.Thread(target=open_admin_console, daemon=True).start()
                 elif value == 0:
                     pressed.discard(code)
         session.check_idle()
