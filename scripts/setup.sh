@@ -40,6 +40,8 @@ install -D -m 644 "$REPO/system/kiosk-sessiond.service" /etc/systemd/system/kios
 install -D -m 755 "$REPO/agent/kiosk-sessiond"         /usr/local/sbin/kiosk-sessiond
 install -D -m 755 "$REPO/agent/kiosk"                  /usr/local/sbin/kiosk
 install -D -m 755 "$REPO/agent/kiosk-admin-ui"         /usr/local/sbin/kiosk-admin-ui
+install -D -m 755 "$REPO/agent/kiosk-autoupdate"       /usr/local/sbin/kiosk-autoupdate
+install -D -m 644 "$REPO/system/kiosk-update.service"  /etc/systemd/system/kiosk-update.service
 install -D -m 755 "$REPO/agent/kiosk-browser"          /usr/local/bin/kiosk-browser
 install -D -m 755 "$REPO/agent/kiosk-splash"           /usr/local/bin/kiosk-splash
 install -D -m 644 "$REPO/system/kiosk-admin.service"   /etc/systemd/system/kiosk-admin.service
@@ -77,7 +79,7 @@ update-grub
 
 systemctl daemon-reload
 systemctl set-default graphical.target
-systemctl enable kiosk.service kiosk-sessiond.service
+systemctl enable kiosk.service kiosk-sessiond.service kiosk-update.service
 
 echo
 echo "Done. Type 'reboot' and press Enter to start the kiosk."

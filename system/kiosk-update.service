@@ -1,0 +1,18 @@
+[Unit]
+Description=Kiosk update check at boot
+Wants=network-online.target
+After=network-online.target kiosk-firstboot.service
+# Keep the boot splash up while the check runs
+Before=kiosk.service plymouth-quit.service plymouth-quit-wait.service
+# setup.sh writes this file, so the check is skipped until first setup is done
+ConditionPathExists=/etc/kiosk/repo
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kiosk-autoupdate
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=20min
+
+[Install]
+WantedBy=multi-user.target

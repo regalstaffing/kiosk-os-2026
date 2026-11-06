@@ -1,0 +1,32 @@
+#!/bin/sh
+# Runs at every boot, before the kiosk screen starts. If the repository has
+# new commits, pull them, apply them with setup.sh and reboot once.
+# Any failure (no network, GitHub down, setup error) just lets the kiosk start.
+REPO=$(cat /etc/kiosk/repo 2>/dev/null) || exit 0
+[ -d "$REPO/.git" ] || exit 0
+
+say() { echo "$1"; plymouth display-message --text="$1" 2>/dev/null || true; }
+
+# Give the network up to 30 seconds
+i=0
+while [ $i -lt 30 ] && ! ip route | grep -q '^default'; do sleep 1; i=$((i + 1)); done
+
+say "Checking for updates…"
+timeout 30 git -C "$REPO" fetch --quiet origin || { echo "update check failed, skipping"; exit 0; }
+LOCAL=$(git -C "$REPO" rev-parse HEAD)
+REMOTE=$(git -C "$REPO" rev-parse '@{u}') || exit 0
+if [ "$LOCAL" = "$REMOTE" ]; then
+    echo "already up to date ($LOCAL)"
+    exit 0
+fi
+
+say "Installing updates, please wait…"
+echo "updating $LOCAL -> $REMOTE"
+git -C "$REPO" merge --ff-only --quiet '@{u}' || { echo "could not apply update, skipping"; exit 0; }
+if sh "$REPO/scripts/setup.sh"; then
+    say "Restarting to finish the update…"
+    systemctl reboot
+else
+    echo "setup.sh failed; starting the kiosk with what is installed"
+fi
+exit 0

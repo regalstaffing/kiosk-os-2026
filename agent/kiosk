@@ -27,7 +27,7 @@ case "$1" in
         echo "Usage: kiosk back | end-session | update | status | check"
         echo "  back         return to the kiosk screen"
         echo "  end-session  wipe the current session and return"
-        echo "  update       pull the latest kiosk files and apply them"
+        echo "  update       pull the latest kiosk files and apply them (also runs at every boot)"
         echo "  status       show the kiosk services"
         echo "  check        show versions and settings for troubleshooting"
         ;;
