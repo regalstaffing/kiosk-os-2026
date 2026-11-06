@@ -45,6 +45,9 @@ install -D -m 644 "$REPO/system/kiosk-sessiond.service" /etc/systemd/system/kios
 install -D -m 755 "$REPO/agent/kiosk-sessiond"         /usr/local/sbin/kiosk-sessiond
 install -D -m 755 "$REPO/agent/kiosk"                  /usr/local/sbin/kiosk
 install -D -m 644 "$REPO/system/motd"                  /etc/motd
+install -D -m 644 "$REPO/system/hwdb-kiosk.hwdb"       /etc/udev/hwdb.d/90-kiosk.hwdb
+systemd-hwdb update
+udevadm trigger --subsystem-match=input --action=change 2>/dev/null || true
 # Keep local settings once created, so admins can edit them
 mkdir -p /etc/kiosk
 echo "$REPO" > /etc/kiosk/repo

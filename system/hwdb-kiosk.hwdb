@@ -1,0 +1,9 @@
+# /etc/udev/hwdb.d/90-kiosk.hwdb
+# Turn off F1 (opens the browser's help pages).
+# Built-in laptop keyboards (AT set 1 scancode 0x3b)
+evdev:atkbd:*
+ KEYBOARD_KEY_3b=reserved
+
+# USB keyboards (HID usage 0x07003a)
+evdev:input:b0003*
+ KEYBOARD_KEY_7003a=reserved

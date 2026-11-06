@@ -5,7 +5,8 @@
     "chrome-untrusted://*",
     "devtools://*",
     "view-source:*",
-    "file://*"
+    "file://*",
+    "support.google.com/chrome"
   ],
   "URLAllowlist": [
     "http://127.0.0.1:8099",
