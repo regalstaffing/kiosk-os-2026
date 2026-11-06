@@ -50,6 +50,8 @@ install -D -m 644 "$REPO/system/motd"                  /etc/motd
 install -D -m 644 "$REPO/system/apt-auto-upgrades"     /etc/apt/apt.conf.d/20auto-upgrades
 install -D -m 644 "$REPO/system/hwdb-kiosk.hwdb"       /etc/udev/hwdb.d/90-kiosk.hwdb
 systemd-hwdb update
+# Keep logs across reboots for troubleshooting
+mkdir -p /var/log/journal
 udevadm trigger --subsystem-match=input --action=change 2>/dev/null || true
 # Keep local settings once created, so admins can edit them
 mkdir -p /etc/kiosk

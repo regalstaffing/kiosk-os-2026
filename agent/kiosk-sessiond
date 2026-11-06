@@ -152,6 +152,19 @@ def active_vt():
         return ""
 
 
+def wait_for_kiosk_logout(limit):
+    """Wait until the kiosk user's login session has fully closed, so the
+    admin screen can take over the display."""
+    deadline = time.monotonic() + limit
+    while time.monotonic() < deadline:
+        out = subprocess.run(["loginctl", "list-sessions", "--no-legend"],
+                             capture_output=True, text=True).stdout
+        if not any(len(f) > 2 and f[2] == "kiosk" for f in (l.split() for l in out.splitlines())):
+            return
+        time.sleep(0.5)
+    log("kiosk session still open after %d s" % limit)
+
+
 def open_admin_console():
     # Runs in its own thread with time limits, so a slow or stuck step can
     # never freeze key handling or the idle checks.
@@ -162,7 +175,14 @@ def open_admin_console():
         # Stop the kiosk screen fully before the admin screen takes over the
         # display; starting both at once could leave a blank screen.
         subprocess.run(["systemctl", "stop", "kiosk.service"], timeout=20)
+        wait_for_kiosk_logout(10)
         subprocess.run(["systemctl", "start", "kiosk-admin.service"], timeout=20)
+        time.sleep(8)
+        if not is_active("kiosk-admin.service"):
+            # Never leave the screen dead: bring the kiosk back instead
+            log("admin screen did not start, returning to kiosk")
+            subprocess.run(["systemctl", "start", "kiosk.service"], timeout=20)
+            return
         if active_vt() != "tty1":  # e.g. coming from the text console
             subprocess.run(["chvt", "1"], timeout=5)
     except subprocess.TimeoutExpired:

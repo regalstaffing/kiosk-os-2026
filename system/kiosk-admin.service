@@ -1,7 +1,10 @@
 [Unit]
 Description=Kiosk admin screen
 Conflicts=kiosk.service getty@tty1.service
-After=systemd-user-sessions.service
+After=systemd-user-sessions.service kiosk.service
+# If the display was not free yet, try again (what a second key press used to do)
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 PAMName=login
@@ -14,3 +17,5 @@ StandardError=journal
 Environment=XKB_DEFAULT_OPTIONS=srvrkeys:none
 Environment=GDK_BACKEND=wayland
 ExecStart=/usr/bin/cage -d -- /usr/local/sbin/kiosk-admin-ui
+Restart=on-failure
+RestartSec=1
