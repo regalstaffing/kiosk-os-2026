@@ -1,0 +1,16 @@
+[Unit]
+Description=Kiosk admin screen
+Conflicts=kiosk.service getty@tty1.service
+After=systemd-user-sessions.service
+
+[Service]
+PAMName=login
+TTYPath=/dev/tty1
+UtmpIdentifier=tty1
+UtmpMode=user
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+Environment=XKB_DEFAULT_OPTIONS=srvrkeys:none
+Environment=GDK_BACKEND=wayland
+ExecStart=/usr/bin/cage -d -- /usr/local/sbin/kiosk-admin-ui

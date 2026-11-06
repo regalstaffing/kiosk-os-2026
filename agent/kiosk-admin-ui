@@ -1,0 +1,312 @@
+#!/usr/bin/python3
+"""Kiosk admin screen (GTK). Started by kiosk-admin.service on Ctrl+Alt+Shift+A.
+
+Shows a password prompt; the root password unlocks Wi-Fi, text console,
+restart and shut down. Leaving the screen starts the kiosk again.
+"""
+import ctypes
+import re
+import subprocess
+import threading
+import time
+
+import gi
+gi.require_version("Gdk", "3.0")
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gdk, GLib, Gtk  # noqa: E402
+
+FAILURES = "/run/kiosk-admin-failures"
+MAX_FAILURES = 5
+LOCKOUT_SECONDS = 60
+
+CSS = b"""
+window { background: #f4f5f7; }
+* { font-size: 20px; }
+.title { font-size: 30px; font-weight: bold; }
+.big button, button.big { min-height: 64px; min-width: 320px; }
+.danger { color: #b71c1c; }
+.status { color: #4a5263; }
+"""
+
+
+def run(*cmd):
+    p = subprocess.run(cmd, capture_output=True, text=True)
+    return p.returncode, (p.stdout + p.stderr).strip()
+
+
+def back_to_kiosk():
+    subprocess.Popen(["systemctl", "start", "--no-block", "kiosk.service"])
+
+
+# --- password check against /etc/shadow (root) ---
+
+_libcrypt = ctypes.CDLL("libcrypt.so.1")
+_libcrypt.crypt.restype = ctypes.c_char_p
+_libcrypt.crypt.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+
+
+def root_password_ok(password):
+    with open("/etc/shadow") as f:
+        for line in f:
+            fields = line.split(":")
+            if fields[0] == "root":
+                stored = fields[1]
+                break
+        else:
+            return False
+    if not stored or stored[0] in "!*":
+        return False
+    result = _libcrypt.crypt(password.encode(), stored.encode())
+    return result is not None and result.decode() == stored
+
+
+def recent_failures():
+    try:
+        with open(FAILURES) as f:
+            stamps = [float(x) for x in f.read().split()]
+    except (OSError, ValueError):
+        stamps = []
+    return [t for t in stamps if time.time() - t < LOCKOUT_SECONDS]
+
+
+def record_failure():
+    stamps = recent_failures() + [time.time()]
+    with open(FAILURES, "w") as f:
+        f.write(" ".join(str(t) for t in stamps))
+    return len(stamps)
+
+
+# --- nmcli helpers ---
+
+def split_terse(line):
+    """Split an nmcli -t line on unescaped colons."""
+    return [p.replace("\\:", ":") for p in re.split(r"(?<!\\):", line)]
+
+
+def network_status():
+    code, out = run("nmcli", "-t", "-f", "TYPE,STATE,CONNECTION", "device")
+    if code != 0:
+        return "Network status unavailable"
+    parts = []
+    for line in out.splitlines():
+        kind, state, conn = (split_terse(line) + ["", "", ""])[:3]
+        if kind in ("ethernet", "wifi") and state.startswith("connected"):
+            parts.append("%s: %s" % ("Wired" if kind == "ethernet" else "Wi-Fi", conn))
+    return "Connected — " + ", ".join(parts) if parts else "Not connected"
+
+
+def wifi_networks():
+    run("nmcli", "radio", "wifi", "on")
+    code, out = run("nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY",
+                    "device", "wifi", "list", "--rescan", "yes")
+    if code != 0:
+        return None, out
+    best = {}
+    for line in out.splitlines():
+        in_use, ssid, signal, security = (split_terse(line) + ["", "", "", ""])[:4]
+        if not ssid:
+            continue
+        signal = int(signal or 0)
+        if ssid not in best or signal > best[ssid][0]:
+            best[ssid] = (signal, security, in_use == "*")
+    nets = sorted(best.items(), key=lambda kv: -kv[1][0])
+    return nets, ""
+
+
+class AdminWindow(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Kiosk admin")
+        self.connect("destroy", Gtk.main_quit)
+        self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.NONE)
+        self.add(self.stack)
+        self.stack.add_named(self.build_login(), "login")
+        self.stack.add_named(self.build_menu(), "menu")
+        self.stack.add_named(self.build_wifi(), "wifi")
+        self.show_all()
+        self.fullscreen()
+        self.password.grab_focus()
+
+    # --- layout helpers ---
+
+    def page(self):
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        outer.set_halign(Gtk.Align.CENTER)
+        outer.set_valign(Gtk.Align.CENTER)
+        return outer
+
+    def label(self, text, css=None):
+        lbl = Gtk.Label(label=text)
+        lbl.set_line_wrap(True)
+        if css:
+            lbl.get_style_context().add_class(css)
+        return lbl
+
+    def button(self, text, handler, css="big"):
+        btn = Gtk.Button(label=text)
+        btn.get_style_context().add_class(css)
+        btn.connect("clicked", handler)
+        return btn
+
+    # --- login ---
+
+    def build_login(self):
+        box = self.page()
+        box.pack_start(self.label("Kiosk admin", "title"), False, False, 0)
+        box.pack_start(self.label("Enter the admin password"), False, False, 0)
+        self.password = Gtk.Entry(visibility=False)
+        self.password.connect("activate", self.on_unlock)
+        box.pack_start(self.password, False, False, 0)
+        self.login_msg = self.label("", "danger")
+        box.pack_start(self.login_msg, False, False, 0)
+        box.pack_start(self.button("Unlock", self.on_unlock), False, False, 0)
+        box.pack_start(self.button("Cancel", self.on_leave), False, False, 0)
+        return box
+
+    def on_unlock(self, _widget):
+        if len(recent_failures()) >= MAX_FAILURES:
+            self.login_msg.set_text("Too many attempts. Wait a minute and try again.")
+            return
+        if root_password_ok(self.password.get_text()):
+            self.password.set_text("")
+            self.refresh_status()
+            self.stack.set_visible_child_name("menu")
+        else:
+            self.password.set_text("")
+            count = record_failure()
+            left = MAX_FAILURES - count
+            self.login_msg.set_text("Wrong password." if left > 0 else
+                                    "Too many attempts. Wait a minute and try again.")
+
+    # --- menu ---
+
+    def build_menu(self):
+        box = self.page()
+        box.pack_start(self.label("Kiosk admin", "title"), False, False, 0)
+        self.status = self.label("", "status")
+        box.pack_start(self.status, False, False, 0)
+        box.pack_start(self.button("Wi-Fi", self.on_wifi), False, False, 0)
+        box.pack_start(self.button("Text console", self.on_console), False, False, 0)
+        box.pack_start(self.button("Restart", self.on_restart), False, False, 0)
+        box.pack_start(self.button("Shut down", self.on_shutdown), False, False, 0)
+        box.pack_start(self.button("Back to kiosk", self.on_leave), False, False, 0)
+        return box
+
+    def refresh_status(self):
+        self.status.set_text("Checking network…")
+        threading.Thread(target=lambda: GLib.idle_add(self.status.set_text, network_status()),
+                         daemon=True).start()
+
+    def confirm(self, question):
+        dlg = Gtk.MessageDialog(transient_for=self, modal=True,
+                                message_type=Gtk.MessageType.QUESTION,
+                                buttons=Gtk.ButtonsType.YES_NO, text=question)
+        answer = dlg.run()
+        dlg.destroy()
+        return answer == Gtk.ResponseType.YES
+
+    def on_console(self, _widget):
+        subprocess.run(["systemctl", "start", "getty@tty2.service"])
+        subprocess.run(["chvt", "2"])
+        Gtk.main_quit()  # kiosk restarts on "kiosk back" or after 10 idle minutes
+
+    def on_restart(self, _widget):
+        if self.confirm("Restart this computer?"):
+            subprocess.Popen(["systemctl", "reboot"])
+
+    def on_shutdown(self, _widget):
+        if self.confirm("Shut down this computer?"):
+            subprocess.Popen(["systemctl", "poweroff"])
+
+    def on_leave(self, _widget):
+        back_to_kiosk()
+        Gtk.main_quit()
+
+    # --- Wi-Fi ---
+
+    def build_wifi(self):
+        box = self.page()
+        box.set_size_request(640, -1)
+        box.pack_start(self.label("Wi-Fi", "title"), False, False, 0)
+        self.wifi_msg = self.label("", "status")
+        box.pack_start(self.wifi_msg, False, False, 0)
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_min_content_height(280)
+        self.wifi_list = Gtk.ListBox()
+        self.wifi_list.connect("row-selected", self.on_wifi_selected)
+        scroller.add(self.wifi_list)
+        box.pack_start(scroller, True, True, 0)
+        self.wifi_password = Gtk.Entry(visibility=False, placeholder_text="Wi-Fi password")
+        self.wifi_password.connect("activate", self.on_wifi_connect)
+        box.pack_start(self.wifi_password, False, False, 0)
+        box.pack_start(self.button("Connect", self.on_wifi_connect), False, False, 0)
+        box.pack_start(self.button("Refresh list", self.on_wifi), False, False, 0)
+        box.pack_start(self.button("Back", self.on_wifi_back), False, False, 0)
+        return box
+
+    def on_wifi(self, _widget):
+        self.stack.set_visible_child_name("wifi")
+        self.wifi_msg.set_text("Looking for networks…")
+        for row in self.wifi_list.get_children():
+            self.wifi_list.remove(row)
+        threading.Thread(target=self.load_wifi, daemon=True).start()
+
+    def load_wifi(self):
+        nets, error = wifi_networks()
+        GLib.idle_add(self.show_wifi, nets, error)
+
+    def show_wifi(self, nets, error):
+        if nets is None:
+            self.wifi_msg.set_text("Wi-Fi is not available: " + error)
+            return
+        if not nets:
+            self.wifi_msg.set_text("No networks found. Try Refresh list.")
+            return
+        self.wifi_msg.set_text("Pick a network, type its password, then Connect.")
+        for ssid, (signal, security, in_use) in nets:
+            text = "%s%s   %d%%%s" % ("✓ " if in_use else "", ssid, signal,
+                                     "" if security else "   (open)")
+            row = Gtk.ListBoxRow()
+            row.ssid = ssid
+            row.secured = bool(security)
+            row.add(Gtk.Label(label=text, xalign=0, margin=8))
+            self.wifi_list.add(row)
+        self.wifi_list.show_all()
+
+    def on_wifi_selected(self, _listbox, row):
+        if row is not None:
+            self.wifi_password.set_sensitive(row.secured)
+            self.wifi_password.grab_focus()
+
+    def on_wifi_connect(self, _widget):
+        row = self.wifi_list.get_selected_row()
+        if row is None:
+            self.wifi_msg.set_text("Pick a network first.")
+            return
+        cmd = ["nmcli", "device", "wifi", "connect", row.ssid]
+        if row.secured:
+            cmd += ["password", self.wifi_password.get_text()]
+        self.wifi_msg.set_text("Connecting to %s…" % row.ssid)
+
+        def work():
+            code, out = run(*cmd)
+            msg = ("Connected to %s." % row.ssid) if code == 0 else ("Could not connect: " + out)
+            GLib.idle_add(self.wifi_msg.set_text, msg)
+        threading.Thread(target=work, daemon=True).start()
+        self.wifi_password.set_text("")
+
+    def on_wifi_back(self, _widget):
+        self.refresh_status()
+        self.stack.set_visible_child_name("menu")
+
+
+def main():
+    provider = Gtk.CssProvider()
+    provider.load_from_data(CSS)
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider,
+                                             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    AdminWindow()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()

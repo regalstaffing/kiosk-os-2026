@@ -10,22 +10,17 @@ REPO=$(cd "$(dirname "$0")/.." && pwd)
 echo "==> Installing packages"
 apt-get update
 # fonts-noto-core is small; the full fonts-noto set pulls in ~1 GB of CJK fonts
-apt-get install -y cage chromium fonts-noto-core fontconfig python3 kbd git
+apt-get install -y cage chromium fonts-noto-core fontconfig python3 kbd git \
+    python3-gi gir1.2-gtk-3.0 network-manager
 
-echo "==> Enabling wired network on every Ethernet port"
-# The Debian installer configures only the interface used during install
-# (sometimes Wi-Fi), leaving Ethernet unmanaged.
-WIRED=/etc/network/interfaces.d/kiosk-wired
-: > "$WIRED"
-for dev in /sys/class/net/*; do
-    name=$(basename "$dev")
-    [ "$name" = lo ] && continue
-    [ -e "$dev/device" ] || continue      # skip virtual interfaces
-    [ -e "$dev/wireless" ] && continue    # skip Wi-Fi
-    grep -qs "iface $name " /etc/network/interfaces && continue
-    printf 'allow-hotplug %s\niface %s inet dhcp\n\n' "$name" "$name" >> "$WIRED"
-    echo "    $name"
-done
+echo "==> Handing networking to NetworkManager"
+# NetworkManager connects any wired port automatically and lets the admin
+# screen join Wi-Fi. It ignores interfaces listed in /etc/network/interfaces,
+# so reduce that file to loopback only (original kept as .before-kiosk).
+[ -e /etc/network/interfaces.before-kiosk ] || cp /etc/network/interfaces /etc/network/interfaces.before-kiosk
+printf 'source /etc/network/interfaces.d/*\n\nauto lo\niface lo inet loopback\n' > /etc/network/interfaces
+rm -f /etc/network/interfaces.d/kiosk-wired
+systemctl enable NetworkManager.service
 
 echo "==> Creating the kiosk user"
 if id kiosk >/dev/null 2>&1; then
@@ -44,6 +39,9 @@ install -D -m 644 "$REPO/system/grub-kiosk.cfg"        /etc/default/grub.d/kiosk
 install -D -m 644 "$REPO/system/kiosk-sessiond.service" /etc/systemd/system/kiosk-sessiond.service
 install -D -m 755 "$REPO/agent/kiosk-sessiond"         /usr/local/sbin/kiosk-sessiond
 install -D -m 755 "$REPO/agent/kiosk"                  /usr/local/sbin/kiosk
+install -D -m 755 "$REPO/agent/kiosk-admin-ui"         /usr/local/sbin/kiosk-admin-ui
+install -D -m 644 "$REPO/system/kiosk-admin.service"   /etc/systemd/system/kiosk-admin.service
+install -D -m 644 "$REPO/system/profile-timeout.sh"    /etc/profile.d/kiosk-timeout.sh
 install -D -m 644 "$REPO/system/motd"                  /etc/motd
 install -D -m 644 "$REPO/system/hwdb-kiosk.hwdb"       /etc/udev/hwdb.d/90-kiosk.hwdb
 systemd-hwdb update

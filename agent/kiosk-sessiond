@@ -3,7 +3,9 @@
 
 - Serves the "End session" page at http://127.0.0.1:8099/ (the browser's Home button).
 - Wipes the session after IDLE_MINUTES without keyboard, mouse or touch input.
-- Opens a password-protected admin console on Ctrl+Alt+Shift+A.
+- Opens the password-protected admin screen on Ctrl+Alt+Shift+A, closes it
+  after ADMIN_IDLE seconds without input, and brings the kiosk back if it was
+  left stopped (text console) for CONSOLE_IDLE seconds.
 
 A session is wiped by restarting kiosk.service: its browser profile lives in a
 runtime directory that systemd deletes whenever the service stops.
@@ -21,6 +23,8 @@ import time
 SETTINGS = "/etc/kiosk/settings"
 PORT = 8099
 ORIGIN = "http://127.0.0.1:%d" % PORT
+ADMIN_IDLE = 180
+CONSOLE_IDLE = 600
 
 # struct input_event on 64-bit Linux: timeval (2 longs), type, code, value
 EVENT = struct.Struct("llHHi")
@@ -78,9 +82,13 @@ def load_settings():
     return settings
 
 
+def is_active(unit):
+    return subprocess.run(["systemctl", "is-active", "--quiet", unit]).returncode == 0
+
+
 def kiosk_on_screen():
     """True when the kiosk is running and its console (tty1) is the one shown."""
-    if subprocess.run(["systemctl", "is-active", "--quiet", "kiosk.service"]).returncode != 0:
+    if not is_active("kiosk.service"):
         return False
     try:
         with open("/sys/class/tty/tty0/active") as f:
@@ -108,18 +116,30 @@ class Session:
         log("ending session: %s" % reason)
         subprocess.run(["systemctl", "restart", "kiosk.service"])
 
-    def check_idle(self):
+    def idle_for(self):
         with self.lock:
-            due = (self.used and self.idle_seconds > 0
-                   and time.monotonic() - self.last_input >= self.idle_seconds)
+            return time.monotonic() - self.last_input
+
+    def check_idle(self):
+        idle = self.idle_for()
+        with self.lock:
+            due = self.used and self.idle_seconds > 0 and idle >= self.idle_seconds
         if due and kiosk_on_screen():
             self.end("idle")
+            return
+        if idle >= ADMIN_IDLE and is_active("kiosk-admin.service"):
+            log("closing idle admin screen")
+            subprocess.run(["systemctl", "start", "kiosk.service"])
+        elif (idle >= CONSOLE_IDLE and is_active("graphical.target")
+              and not is_active("kiosk.service") and not is_active("kiosk-admin.service")):
+            log("restarting kiosk after idle text console")
+            subprocess.run(["systemctl", "start", "kiosk.service"])
 
 
 def open_admin_console():
-    log("admin console requested")
-    subprocess.run(["systemctl", "start", "getty@tty2.service"])
-    subprocess.run(["chvt", "2"])
+    log("admin screen requested")
+    subprocess.run(["systemctl", "start", "--no-block", "kiosk-admin.service"])
+    subprocess.run(["chvt", "1"])
 
 
 def input_loop(session):

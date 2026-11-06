@@ -20,9 +20,21 @@ You need: a USB stick (1 GB+, it will be erased), a wired network connection, an
 
 On first start the PC finishes the kiosk setup (a few minutes of text on screen), restarts once more, and then boots straight into the kiosk.
 
-## 3. Admin console
+## 3. Admin screen
 
-Press **Ctrl+Alt+Shift+A** on the kiosk, log in as `root` with the password from step 2, then:
+Press **Ctrl+Alt+Shift+A** on the kiosk and enter the root password from step 2.
+(This ends the current browser session.)
+
+| Button | What it does |
+| --- | --- |
+| Wi-Fi | List nearby networks and connect; the password is saved on this device only |
+| Text console | Open the command line (see below) |
+| Restart / Shut down | Restart or power off, after a confirmation |
+| Back to kiosk | Return to the browser |
+
+After 5 wrong passwords the screen locks for a minute. It closes by itself after 3 idle minutes.
+
+### Text console commands
 
 | Command | What it does |
 | --- | --- |
@@ -30,6 +42,10 @@ Press **Ctrl+Alt+Shift+A** on the kiosk, log in as `root` with the password from
 | `kiosk end-session` | Wipe the current session and return |
 | `kiosk update` | Pull the latest kiosk files and apply them (then `reboot`) |
 | `kiosk status` | Show whether the kiosk services are running |
+| `kiosk check` | Show versions and settings for troubleshooting |
+| `nmtui` | Network and Wi-Fi settings in text menus |
+
+The console logs out after 10 idle minutes, and the kiosk comes back by itself.
 
 Settings that live on the device are in `/etc/kiosk/settings` (for example `IDLE_MINUTES=6`).
 Edit with `nano /etc/kiosk/settings`, then `systemctl restart kiosk-sessiond`.

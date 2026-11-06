@@ -4,7 +4,7 @@ REPO=$(cat /etc/kiosk/repo 2>/dev/null || echo /opt/kiosk-os)
 
 case "$1" in
     back)
-        chvt 1
+        systemctl start kiosk.service && chvt 1
         ;;
     end-session)
         systemctl restart kiosk.service && chvt 1

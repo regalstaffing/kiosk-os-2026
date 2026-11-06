@@ -6,4 +6,7 @@
   kiosk update       pull the latest kiosk files and apply them
   kiosk status       show the kiosk services
   kiosk check        show versions and settings for troubleshooting
+  nmtui              network and Wi-Fi settings (text menus)
+
+  This shell logs out after 10 idle minutes.
 
