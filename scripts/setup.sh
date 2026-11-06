@@ -11,7 +11,7 @@ echo "==> Installing packages"
 apt-get update
 # fonts-noto-core is small; the full fonts-noto set pulls in ~1 GB of CJK fonts
 apt-get install -y cage chromium fonts-noto-core fontconfig python3 kbd git \
-    python3-gi gir1.2-gtk-3.0 network-manager
+    python3-gi gir1.2-gtk-3.0 network-manager plymouth plymouth-themes
 
 echo "==> Handing networking to NetworkManager"
 # NetworkManager connects any wired port automatically and lets the admin
@@ -40,6 +40,8 @@ install -D -m 644 "$REPO/system/kiosk-sessiond.service" /etc/systemd/system/kios
 install -D -m 755 "$REPO/agent/kiosk-sessiond"         /usr/local/sbin/kiosk-sessiond
 install -D -m 755 "$REPO/agent/kiosk"                  /usr/local/sbin/kiosk
 install -D -m 755 "$REPO/agent/kiosk-admin-ui"         /usr/local/sbin/kiosk-admin-ui
+install -D -m 755 "$REPO/agent/kiosk-browser"          /usr/local/bin/kiosk-browser
+install -D -m 755 "$REPO/agent/kiosk-splash"           /usr/local/bin/kiosk-splash
 install -D -m 644 "$REPO/system/kiosk-admin.service"   /etc/systemd/system/kiosk-admin.service
 install -D -m 644 "$REPO/system/profile-timeout.sh"    /etc/profile.d/kiosk-timeout.sh
 install -D -m 644 "$REPO/system/motd"                  /etc/motd
@@ -51,7 +53,25 @@ mkdir -p /etc/kiosk
 echo "$REPO" > /etc/kiosk/repo
 [ -e /etc/kiosk/settings ] || install -D -m 644 "$REPO/system/settings" /etc/kiosk/settings
 
-echo "==> Applying USB storage block to the boot files"
+echo "==> Installing branding and boot splash"
+THEME=/usr/share/plymouth/themes/kiosk
+if [ -f "$REPO/branding/logo.png" ]; then
+    install -D -m 644 "$REPO/branding/logo.png" /usr/share/kiosk/logo.png
+    rm -rf "$THEME"
+    cp -r /usr/share/plymouth/themes/spinner "$THEME"
+    mv "$THEME/spinner.plymouth" "$THEME/kiosk.plymouth"
+    sed -i -e 's/^Name=.*/Name=Kiosk/' \
+        -e 's/^BackgroundStartColor=.*/BackgroundStartColor=0xf4f5f7/' \
+        -e 's/^BackgroundEndColor=.*/BackgroundEndColor=0xf4f5f7/' \
+        -e 's|/spinner$|/kiosk|' "$THEME/kiosk.plymouth"
+    cp "$REPO/branding/logo.png" "$THEME/watermark.png"
+    plymouth-set-default-theme kiosk
+else
+    rm -f /usr/share/kiosk/logo.png
+    plymouth-set-default-theme spinner
+fi
+
+echo "==> Applying USB storage block and splash to the boot files"
 update-initramfs -u
 update-grub
 

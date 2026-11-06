@@ -1,0 +1,79 @@
+#!/usr/bin/python3
+"""Full-screen branded background shown behind the browser.
+
+Visible while the browser starts, while the network comes up, and whenever all
+browser windows are closed. Shows /usr/share/kiosk/logo.png if present.
+Status text can be changed by writing a line to /run/kiosk/splash-status.
+"""
+import os
+
+import gi
+gi.require_version("Gdk", "3.0")
+gi.require_version("GdkPixbuf", "2.0")
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gdk, GdkPixbuf, GLib, Gtk  # noqa: E402
+
+LOGO = "/usr/share/kiosk/logo.png"
+STATUS = "/run/kiosk/splash-status"
+
+CSS = b"""
+window { background: #f4f5f7; }
+.name { font-size: 56px; font-weight: bold; color: #1d2330; }
+.status { font-size: 22px; color: #4a5263; }
+"""
+
+
+class Splash(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Kiosk")
+        self.connect("destroy", Gtk.main_quit)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=32)
+        box.set_halign(Gtk.Align.CENTER)
+        box.set_valign(Gtk.Align.CENTER)
+        self.add(box)
+
+        geo = Gdk.Display.get_default().get_monitor(0).get_geometry()
+        screen_w = geo.width or 1366
+        self.set_default_size(screen_w, geo.height or 768)
+        if os.path.exists(LOGO):
+            pix = GdkPixbuf.Pixbuf.new_from_file(LOGO)
+            max_w = int(screen_w * 0.45)
+            if pix.get_width() > max_w:
+                pix = pix.scale_simple(max_w, int(pix.get_height() * max_w / pix.get_width()),
+                                       GdkPixbuf.InterpType.BILINEAR)
+            box.pack_start(Gtk.Image.new_from_pixbuf(pix), False, False, 0)
+        else:
+            name = Gtk.Label(label="Regal Staffing")
+            name.get_style_context().add_class("name")
+            box.pack_start(name, False, False, 0)
+
+        self.status = Gtk.Label(label="Starting…")
+        self.status.get_style_context().add_class("status")
+        box.pack_start(self.status, False, False, 0)
+
+        GLib.timeout_add(500, self.update_status)
+        self.show_all()
+        self.fullscreen()
+
+    def update_status(self):
+        try:
+            with open(STATUS) as f:
+                text = f.read().strip()
+        except OSError:
+            text = ""
+        if text and text != self.status.get_text():
+            self.status.set_text(text)
+        return True
+
+
+def main():
+    provider = Gtk.CssProvider()
+    provider.load_from_data(CSS)
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider,
+                                             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    Splash()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()

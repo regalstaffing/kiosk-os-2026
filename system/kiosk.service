@@ -1,7 +1,6 @@
 [Unit]
 Description=Kiosk browser (cage + Chromium)
-After=systemd-user-sessions.service network-online.target
-Wants=network-online.target
+After=systemd-user-sessions.service plymouth-quit.service
 Conflicts=getty@tty1.service
 
 [Service]
@@ -14,14 +13,13 @@ StandardInput=tty-fail
 # Keep startup messages off the kiosk screen
 StandardOutput=journal
 StandardError=journal
-# Browser profile lives in memory and is deleted whenever the service stops
+# Browser profile lives in memory: kiosk-browser recreates it for every
+# session, and systemd deletes it whenever the service stops
 RuntimeDirectory=kiosk
 RuntimeDirectoryMode=0700
 # Disable Ctrl+Alt+Fn console switching and Ctrl+Alt+Backspace
 Environment=XKB_DEFAULT_OPTIONS=srvrkeys:none
-# Give the network up to 30 s to come up, so the home pages load on the first try
-ExecStartPre=/bin/sh -c 'for i in $(seq 30); do ip route | grep -q "^default" && exit 0; sleep 1; done; exit 0'
-ExecStart=/usr/bin/cage -d -- /usr/bin/chromium --no-first-run --noerrdialogs --ozone-platform=wayland --user-data-dir=/run/kiosk/chromium
+ExecStart=/usr/bin/cage -d -- /usr/local/bin/kiosk-browser
 Restart=always
 RestartSec=2
 

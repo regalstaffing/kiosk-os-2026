@@ -114,7 +114,12 @@ class Session:
             self.used = False
             self.last_input = time.monotonic()
         log("ending session: %s" % reason)
-        subprocess.run(["systemctl", "restart", "kiosk.service"])
+        if subprocess.run(["systemctl", "is-active", "--quiet", "kiosk.service"]).returncode == 0:
+            # Close the browser only: the wrapper wipes the profile and opens
+            # a fresh one, with the branded background shown in between.
+            subprocess.run(["pkill", "-u", "kiosk", "-x", "chromium"])
+        else:
+            subprocess.run(["systemctl", "start", "kiosk.service"])
 
     def idle_for(self):
         with self.lock:
@@ -138,7 +143,13 @@ class Session:
 
 def open_admin_console():
     log("admin screen requested")
-    subprocess.run(["systemctl", "start", "--no-block", "kiosk-admin.service"])
+    # Wait until the admin screen has started, then switch the console away
+    # and back. Without the bounce the new screen sometimes stays blank until
+    # the key combo is pressed a second time.
+    subprocess.run(["systemctl", "start", "kiosk-admin.service"])
+    time.sleep(1.5)
+    subprocess.run(["chvt", "2"])
+    time.sleep(0.3)
     subprocess.run(["chvt", "1"])
 
 
