@@ -7,6 +7,10 @@ STATUS=$RUN/splash-status
 
 /usr/local/bin/kiosk-splash &
 
+# When the service stops, close everything right away instead of restarting
+# the browser (which held up the switch to the admin screen).
+trap 'trap - TERM INT HUP; pkill -P $$; exit 0' TERM INT HUP
+
 status() { echo "$1" > "$STATUS"; }
 
 while true; do
@@ -20,8 +24,10 @@ while true; do
     status "Starting…"
 
     rm -rf "$PROFILE"
+    # Run in the background and wait, so the trap above fires immediately
     /usr/bin/chromium --no-first-run --noerrdialogs --ozone-platform=wayland \
-        --user-data-dir="$PROFILE"
+        --user-data-dir="$PROFILE" &
+    wait $!
     status "Starting a new session…"
     sleep 1
 done

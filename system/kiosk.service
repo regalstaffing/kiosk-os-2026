@@ -22,6 +22,8 @@ Environment=XKB_DEFAULT_OPTIONS=srvrkeys:none
 ExecStart=/usr/bin/cage -d -- /usr/local/bin/kiosk-browser
 Restart=always
 RestartSec=2
+# The profile is wiped anyway, so do not wait long for a clean exit
+TimeoutStopSec=5
 
 [Install]
 WantedBy=graphical.target

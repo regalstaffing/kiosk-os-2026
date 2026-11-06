@@ -174,7 +174,10 @@ def open_admin_console():
         log("admin screen requested")
         # Stop the kiosk screen fully before the admin screen takes over the
         # display; starting both at once could leave a blank screen.
-        subprocess.run(["systemctl", "stop", "kiosk.service"], timeout=20)
+        try:
+            subprocess.run(["systemctl", "stop", "kiosk.service"], timeout=20)
+        except subprocess.TimeoutExpired:
+            log("kiosk screen slow to stop, starting admin screen anyway")
         wait_for_kiosk_logout(10)
         subprocess.run(["systemctl", "start", "kiosk-admin.service"], timeout=20)
         time.sleep(8)
