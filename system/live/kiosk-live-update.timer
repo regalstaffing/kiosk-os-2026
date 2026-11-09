@@ -1,0 +1,10 @@
+[Unit]
+Description=Kiosk (run from stick): check for a newer system version daily
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1d
+RandomizedDelaySec=30min
+
+[Install]
+WantedBy=timers.target

@@ -7,6 +7,7 @@ restart and shut down. Leaving the screen starts the kiosk again.
 import ctypes
 import re
 import subprocess
+import sys
 import threading
 import time
 
@@ -113,18 +114,80 @@ def wifi_networks():
     return nets, ""
 
 
+def set_root_password(password):
+    p = subprocess.run(["chpasswd"], input="root:%s\n" % password, capture_output=True, text=True)
+    if p.returncode != 0:
+        return p.stderr.strip() or "could not set the password"
+    # Run-from-stick kiosks keep the (scrambled) password on the stick
+    subprocess.run(["sh", "-c", "command -v kiosk-live >/dev/null && kiosk-live save"])
+    return None
+
+
 class AdminWindow(Gtk.Window):
-    def __init__(self):
+    def __init__(self, first_setup=False):
         super().__init__(title="Kiosk admin")
+        self.first_setup = first_setup
         self.connect("destroy", Gtk.main_quit)
         self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.NONE)
         self.add(self.stack)
         self.stack.add_named(self.build_login(), "login")
         self.stack.add_named(self.build_menu(), "menu")
         self.stack.add_named(self.build_wifi(), "wifi")
+        self.stack.add_named(self.build_setpw(), "setpw")
         self.show_all()
         self.fullscreen()
-        self.password.grab_focus()
+        if first_setup:
+            self.stack.set_visible_child_name("setpw")
+            self.new_pw.grab_focus()
+        else:
+            self.password.grab_focus()
+
+    # --- set the admin password (first start of a stick, or from the menu) ---
+
+    def build_setpw(self):
+        box = self.page()
+        self.setpw_title = self.label("Set the admin password", "title")
+        box.pack_start(self.setpw_title, False, False, 0)
+        self.setpw_intro = self.label(
+            "This password opens the admin menu (Ctrl+Alt+Shift+A).\nUse at least 10 characters." if self.first_setup
+            else "Use at least 10 characters.")
+        box.pack_start(self.setpw_intro, False, False, 0)
+        self.new_pw = Gtk.Entry(visibility=False, placeholder_text="New password")
+        self.new_pw2 = Gtk.Entry(visibility=False, placeholder_text="Type it again")
+        self.new_pw2.connect("activate", self.on_setpw)
+        box.pack_start(self.new_pw, False, False, 0)
+        box.pack_start(self.new_pw2, False, False, 0)
+        self.setpw_msg = self.label("", "danger")
+        box.pack_start(self.setpw_msg, False, False, 0)
+        box.pack_start(self.button("Save password", self.on_setpw), False, False, 0)
+        if not self.first_setup:
+            box.pack_start(self.button("Cancel", lambda _w: self.stack.set_visible_child_name("menu")), False, False, 0)
+        return box
+
+    def on_setpw(self, _widget):
+        a, b = self.new_pw.get_text(), self.new_pw2.get_text()
+        if len(a) < 10:
+            self.setpw_msg.set_text("Use at least 10 characters.")
+            return
+        if a != b:
+            self.setpw_msg.set_text("The two passwords don't match.")
+            return
+        err = set_root_password(a)
+        self.new_pw.set_text("")
+        self.new_pw2.set_text("")
+        if err:
+            self.setpw_msg.set_text("Not saved: " + err)
+            return
+        if self.first_setup:
+            Gtk.main_quit()  # the kiosk starts next
+        else:
+            self.status.set_text("Admin password changed.")
+            self.stack.set_visible_child_name("menu")
+
+    def on_change_pw(self, _widget):
+        self.setpw_msg.set_text("")
+        self.stack.set_visible_child_name("setpw")
+        self.new_pw.grab_focus()
 
     # --- layout helpers ---
 
@@ -186,6 +249,7 @@ class AdminWindow(Gtk.Window):
         box.pack_start(self.status, False, False, 0)
         box.pack_start(self.button("Wi-Fi", self.on_wifi), False, False, 0)
         box.pack_start(self.button("Text console", self.on_console), False, False, 0)
+        box.pack_start(self.button("Change admin password", self.on_change_pw), False, False, 0)
         box.pack_start(self.button("Restart", self.on_restart), False, False, 0)
         box.pack_start(self.button("Shut down", self.on_shutdown), False, False, 0)
         box.pack_start(self.button("Back to kiosk", self.on_leave), False, False, 0)
@@ -304,7 +368,7 @@ def main():
     provider.load_from_data(CSS)
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider,
                                              Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-    AdminWindow()
+    AdminWindow(first_setup="--set-password" in sys.argv[1:])
     Gtk.main()
 
 

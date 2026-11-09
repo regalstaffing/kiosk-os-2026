@@ -1,0 +1,21 @@
+[Unit]
+Description=Kiosk (run from stick): set the admin password on first start
+ConditionPathExists=/run/kiosk-need-password
+After=kiosk-live-boot.service systemd-user-sessions.service plymouth-quit.service
+Before=kiosk.service
+Conflicts=getty@tty1.service
+
+[Service]
+Type=oneshot
+PAMName=login
+TTYPath=/dev/tty1
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+Environment=XKB_DEFAULT_OPTIONS=srvrkeys:none
+Environment=GDK_BACKEND=wayland
+ExecStart=/usr/bin/cage -d -- /usr/local/sbin/kiosk-admin-ui --set-password
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=graphical.target

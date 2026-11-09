@@ -185,7 +185,10 @@ def apply(fetch):
         lines.append("IDLE_MINUTES=" + idle)
         changed |= write_if_changed(SETTINGS, "\n".join(lines) + "\n")
 
-    write_if_changed(LAST_GOOD, text)
+    if write_if_changed(LAST_GOOD, text) or changed:
+        # Run-from-stick kiosks keep their last working settings on the stick
+        if os.path.exists("/usr/local/sbin/kiosk-live"):
+            subprocess.run(["/usr/local/sbin/kiosk-live", "save"])
     log("group %s (branch %s): %s" % (group, branch, "settings updated" if changed else "no changes"))
     return 0
 

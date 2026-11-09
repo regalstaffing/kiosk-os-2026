@@ -1,0 +1,15 @@
+[Unit]
+Description=Kiosk (run from stick): load saved settings and block other USB sticks
+DefaultDependencies=no
+After=local-fs.target systemd-udevd.service
+Before=network-pre.target kiosk.service kiosk-sessiond.service kiosk-config.service kiosk-setpw.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/kiosk-live boot
+StandardOutput=journal+console
+
+[Install]
+WantedBy=sysinit.target

@@ -10,8 +10,13 @@ case "$1" in
         systemctl restart kiosk.service && chvt 1
         ;;
     update)
-        git -C "$REPO" pull && sh "$REPO/scripts/setup.sh"
-        echo "Type 'reboot' to apply."
+        if [ -d /run/live/medium/live ]; then
+            # Run from stick: fetch the newest system image, then restart into it
+            kiosk-live update --now
+        else
+            git -C "$REPO" pull && sh "$REPO/scripts/setup.sh"
+            echo "Type 'reboot' to apply."
+        fi
         ;;
     group)
         if [ -z "$2" ]; then
@@ -26,6 +31,11 @@ case "$1" in
         git -C "$REPO" fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || { echo "Branch $BRANCH not found"; exit 1; }
         git -C "$REPO" cat-file -e "origin/$BRANCH:groups/$GROUP.toml" 2>/dev/null || { echo "groups/$GROUP.toml not found on branch $BRANCH"; exit 1; }
         printf 'GROUP=%s\nBRANCH=%s\n' "$GROUP" "$BRANCH" > /etc/kiosk/group
+        if [ -d /run/live/medium/live ]; then
+            # Run from stick: the software comes from the system image; only settings follow the branch
+            kiosk-config apply --fetch
+            exit 0
+        fi
         if [ "$(git -C "$REPO" rev-parse --abbrev-ref HEAD)" != "$BRANCH" ]; then
             # The kiosk software follows the same branch as the settings
             git -C "$REPO" checkout -B "$BRANCH" --track "origin/$BRANCH" && sh "$REPO/scripts/setup.sh"
@@ -43,6 +53,7 @@ case "$1" in
         grep -iE '"(Homepage|NewTabPage|ShowHomeButton)' /etc/chromium/policies/managed/kiosk.json
         echo "End session page: $(python3 -c 'import urllib.request;print(urllib.request.urlopen("http://127.0.0.1:8099/").status)' 2>&1 | tail -1)"
         kiosk-config show
+        [ -d /run/live/medium/live ] && kiosk-live status
         echo "Idle wipe: $(grep IDLE_MINUTES /etc/kiosk/settings)"
         echo "Last settings check: $(journalctl -u kiosk-config -u kiosk-update -n 1 --no-pager -o cat 2>/dev/null | tail -1)"
         ;;

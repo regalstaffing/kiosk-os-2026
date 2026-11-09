@@ -1,0 +1,179 @@
+#!/bin/sh
+# Run-from-stick support. The system runs read-only from the stick with all
+# changes in memory; this script handles the few things that must last:
+#
+#   kiosk-live boot            at start-up: load saved settings, block other USB sticks,
+#                              confirm a new system version started fine
+#   kiosk-live save            save settings to the stick (group, last working settings,
+#                              admin password hash, device ID)
+#   kiosk-live usb-guard PATH  udev: allow a USB storage interface only if it is the boot stick
+#   kiosk-live update [--now]  download a newer system image to the stick for the next start
+#                              (--now: then restart)
+#   kiosk-live status          show versions and slots
+set -u
+
+MEDIUM=/run/live/medium            # the stick's data partition (mounted read-only)
+DATA=$MEDIUM/kiosk-data            # saved settings
+BOOTUSB=/run/kiosk-boot-usb        # sysfs path of the boot stick
+EFI=/run/kiosk-efi                 # boot partition, mounted only while changing boot settings
+LOCK=/run/kiosk-live.lock
+RELEASE=https://github.com/regalstaffing/kiosk-os-2026/releases/download/live-latest
+SAVED="group config.toml settings device-id root.hash"
+
+log() { echo "kiosk-live: $*"; }
+
+is_live() { [ -d "$MEDIUM/live" ]; }
+
+running_slot() { sed -n 's|.*live-media-path=/live/\([AB]\).*|\1|p' /proc/cmdline; }
+other_slot() { [ "$(running_slot)" = A ] && echo B || echo A; }
+
+# Run a command with the stick writable, then make it read-only again.
+with_rw() {
+    exec 9>"$LOCK"
+    flock 9
+    mount -o remount,rw "$MEDIUM" || { log "cannot write to the stick"; return 1; }
+    "$@"; rc=$?
+    sync
+    mount -o remount,ro "$MEDIUM" 2>/dev/null || log "stick stays writable until restart"
+    flock -u 9
+    return $rc
+}
+
+with_efi() {
+    mkdir -p "$EFI"
+    mount -t vfat LABEL=KIOSKEFI "$EFI" || { log "boot partition not found"; return 1; }
+    "$@"; rc=$?
+    sync; umount "$EFI"
+    return $rc
+}
+
+grubenv() { grub-editenv "$EFI/kiosk/grubenv" "$@"; }
+
+# --- saved settings ---
+
+do_save() {
+    mkdir -p "$DATA"
+    getent shadow root | cut -d: -f2 > /etc/kiosk/root.hash
+    for f in $SAVED; do
+        [ -f "/etc/kiosk/$f" ] || continue
+        if ! cmp -s "/etc/kiosk/$f" "$DATA/$f"; then
+            cp "/etc/kiosk/$f" "$DATA/$f.new" && mv "$DATA/$f.new" "$DATA/$f"
+        fi
+    done
+    chmod 600 "$DATA/root.hash" 2>/dev/null
+    return 0
+}
+
+save() {
+    is_live || return 0
+    with_rw do_save && log "settings saved to the stick"
+}
+
+load() {
+    mkdir -p /etc/kiosk
+    for f in $SAVED; do
+        [ -f "$DATA/$f" ] && cp "$DATA/$f" "/etc/kiosk/$f"
+    done
+    if [ -s /etc/kiosk/root.hash ]; then
+        usermod -p "$(cat /etc/kiosk/root.hash)" root
+    else
+        # First start of this stick: kiosk-setpw.service asks for an admin password
+        touch /run/kiosk-need-password
+    fi
+    if [ ! -s /etc/kiosk/device-id ]; then
+        head -c 4 /dev/urandom | od -An -tx1 | tr -d ' \n' | sed 's/^/k-/' > /etc/kiosk/device-id
+        echo >> /etc/kiosk/device-id
+        save
+    fi
+}
+
+# --- USB: only the boot stick ---
+
+find_boot_usb() {
+    dev=$(findmnt -no SOURCE "$MEDIUM") || return 1
+    path=/sys$(udevadm info -q path -n "$dev") || return 1
+    while [ "$path" != /sys ] && [ ! -f "$path/idVendor" ]; do path=$(dirname "$path"); done
+    [ -f "$path/idVendor" ] || return 1
+    echo "$path"
+}
+
+usb_guard() {
+    iface=$1
+    case "$iface" in /sys/*) ;; *) iface=/sys$iface ;; esac
+    [ -f "$BOOTUSB" ] || return 0          # too early in start-up; kiosk-live boot checks again
+    boot=$(cat "$BOOTUSB")
+    case "$iface" in "$boot"/*) return 0 ;; esac
+    echo 0 > "$iface/authorized" 2>/dev/null && logger -t kiosk-live "blocked USB storage $iface"
+}
+
+block_other_sticks() {
+    if boot=$(find_boot_usb); then
+        echo "$boot" > "$BOOTUSB"
+        log "boot stick: $boot"
+    else
+        # Not booted from USB (e.g. a virtual PC): block every USB stick
+        echo /nonexistent > "$BOOTUSB"
+    fi
+    for i in /sys/bus/usb/devices/*:*; do
+        [ "$(cat "$i/bInterfaceClass" 2>/dev/null)" = 08 ] && usb_guard "$i"
+    done
+}
+
+# --- updates ---
+
+mark_good() {
+    slot=$(running_slot); [ -n "$slot" ] || return 0
+    with_efi sh -c "
+        cur=\$(grub-editenv '$EFI/kiosk/grubenv' list | sed -n 's/^default_slot=//p')
+        [ \"\$cur\" = '$slot' ] || { grub-editenv '$EFI/kiosk/grubenv' set default_slot='$slot'; echo 'kiosk-live: version in slot $slot started fine, now the default'; }
+    "
+}
+
+do_download() {
+    other=$1 dir=$MEDIUM/live/$1
+    rm -rf "$dir.new"; mkdir -p "$dir.new"
+    for f in SHA256SUMS version vmlinuz initrd.img filesystem.squashfs; do
+        curl -fsSL --retry 3 --max-time 3600 -o "$dir.new/$f" "$RELEASE/$f" || { log "download of $f failed"; rm -rf "$dir.new"; return 1; }
+    done
+    (cd "$dir.new" && sha256sum -c --quiet SHA256SUMS) || { log "download is damaged, discarded"; rm -rf "$dir.new"; return 1; }
+    rm -rf "$dir"; mv "$dir.new" "$dir"
+}
+
+update() {
+    is_live || { log "not running from a stick"; return 0; }
+    now=${1:-}
+    cur=$(cat /etc/kiosk/version 2>/dev/null)
+    new=$(curl -fsSL --max-time 30 "$RELEASE/version") || { log "could not check for updates"; return 0; }
+    if [ "$new" = "$cur" ]; then log "up to date ($cur)"; return 0; fi
+    other=$(other_slot)
+    if [ "$(cat "$MEDIUM/live/$other/version" 2>/dev/null)" != "$new" ]; then
+        # Never overwrite the slot the default (known good) version is in
+        log "downloading version $new to slot $other"
+        with_rw do_download "$other" || return 1
+    fi
+    with_efi grubenv set try_slot="$other" || return 1
+    log "version $new will start next time; if it fails, the current version comes back"
+    [ "$now" = --now ] && systemctl reboot
+    return 0
+}
+
+status() {
+    echo "Running version: $(cat /etc/kiosk/version 2>/dev/null)  (slot $(running_slot))"
+    for s in A B; do echo "Slot $s: $(cat "$MEDIUM/live/$s/version" 2>/dev/null || echo empty)"; done
+    with_efi grubenv list 2>/dev/null
+    echo "Device ID: $(cat /etc/kiosk/device-id 2>/dev/null)"
+}
+
+case "${1:-}" in
+    boot)
+        is_live || exit 0
+        load
+        block_other_sticks
+        mark_good || true
+        ;;
+    save) save ;;
+    usb-guard) usb_guard "$2" ;;
+    update) update "${2:-}" ;;
+    status) status ;;
+    *) sed -n '2,15p' "$0"; exit 2 ;;
+esac

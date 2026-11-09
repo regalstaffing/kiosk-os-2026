@@ -1,0 +1,12 @@
+[Unit]
+Description=Kiosk (run from stick): download a newer system version for the next start
+Wants=network-online.target
+After=network-online.target kiosk-live-boot.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kiosk-live update
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=3h
+

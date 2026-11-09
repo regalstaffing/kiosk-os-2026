@@ -6,12 +6,15 @@
 set -e
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
+# KIOSK_LIVE=1: building the run-from-stick image (live/build-live.sh), in a chroot.
+LIVE=${KIOSK_LIVE:-0}
 
 echo "==> Installing packages"
 apt-get update
 # fonts-noto-core is small; the full fonts-noto set pulls in ~1 GB of CJK fonts
 apt-get install -y cage chromium fonts-noto-core fontconfig python3 kbd git \
     python3-gi gir1.2-gtk-3.0 network-manager plymouth plymouth-themes unattended-upgrades
+if [ "$LIVE" = 1 ]; then apt-get install -y live-boot curl grub-common; fi
 
 echo "==> Handing networking to NetworkManager"
 # NetworkManager connects any wired port automatically and lets the admin
@@ -33,9 +36,15 @@ echo "==> Installing browser policy and system config"
 install -D -m 644 "$REPO/policies/kiosk.json"          /etc/chromium/policies/managed/kiosk.json
 install -D -m 644 "$REPO/system/logind-kiosk.conf"     /etc/systemd/logind.conf.d/kiosk.conf
 install -D -m 644 "$REPO/system/sysctl-kiosk.conf"     /etc/sysctl.d/90-kiosk.conf
-install -D -m 644 "$REPO/system/modprobe-kiosk.conf"   /etc/modprobe.d/kiosk.conf
+if [ "$LIVE" = 1 ]; then
+    # The system itself runs from a USB stick: other sticks are blocked by
+    # kiosk-live instead of switching off USB storage altogether.
+    rm -f /etc/modprobe.d/kiosk.conf
+else
+    install -D -m 644 "$REPO/system/modprobe-kiosk.conf" /etc/modprobe.d/kiosk.conf
+fi
 install -D -m 644 "$REPO/system/kiosk.service"         /etc/systemd/system/kiosk.service
-install -D -m 644 "$REPO/system/grub-kiosk.cfg"        /etc/default/grub.d/kiosk.cfg
+[ "$LIVE" = 1 ] || install -D -m 644 "$REPO/system/grub-kiosk.cfg" /etc/default/grub.d/kiosk.cfg
 install -D -m 644 "$REPO/system/kiosk-sessiond.service" /etc/systemd/system/kiosk-sessiond.service
 install -D -m 755 "$REPO/agent/kiosk-sessiond"         /usr/local/sbin/kiosk-sessiond
 install -D -m 755 "$REPO/agent/kiosk"                  /usr/local/sbin/kiosk
@@ -83,6 +92,31 @@ if [ -f "$REPO/branding/logo.png" ]; then
 else
     rm -f /usr/share/kiosk/logo.png
     plymouth-set-default-theme spinner
+fi
+
+if [ "$LIVE" = 1 ]; then
+    echo "==> Run-from-stick services"
+    install -D -m 755 "$REPO/agent/kiosk-live"                   /usr/local/sbin/kiosk-live
+    install -D -m 644 "$REPO/system/live/kiosk-live-boot.service" /etc/systemd/system/kiosk-live-boot.service
+    install -D -m 644 "$REPO/system/live/kiosk-setpw.service"     /etc/systemd/system/kiosk-setpw.service
+    install -D -m 644 "$REPO/system/live/kiosk-live-update.service" /etc/systemd/system/kiosk-live-update.service
+    install -D -m 644 "$REPO/system/live/kiosk-live-update.timer" /etc/systemd/system/kiosk-live-update.timer
+    install -D -m 644 "$REPO/system/live/90-kiosk-usb-guard.rules" /etc/udev/rules.d/90-kiosk-usb-guard.rules
+    echo kiosk > /etc/hostname
+    # Logs stay in memory only (nothing written to the stick or the PC)
+    rm -rf /var/log/journal
+    mkdir -p /etc/systemd/journald.conf.d
+    printf '[Journal]\nStorage=volatile\nRuntimeMaxUse=50M\n' > /etc/systemd/journald.conf.d/kiosk-live.conf
+    : > /etc/fstab
+    # Updates come as whole new system images, not package upgrades
+    systemctl mask apt-daily.timer apt-daily-upgrade.timer
+    echo "==> Building the boot files"
+    update-initramfs -u -k all
+    systemctl set-default graphical.target
+    systemctl enable kiosk.service kiosk-sessiond.service kiosk-config.timer \
+        kiosk-live-boot.service kiosk-setpw.service kiosk-live-update.timer
+    echo "Done (run-from-stick image)."
+    exit 0
 fi
 
 echo "==> Applying USB storage block and splash to the boot files"

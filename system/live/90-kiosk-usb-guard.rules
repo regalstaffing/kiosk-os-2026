@@ -1,0 +1,2 @@
+# Run from stick: block any USB storage except the stick the kiosk started from.
+ACTION=="add", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_interface", ATTR{bInterfaceClass}=="08", RUN+="/usr/local/sbin/kiosk-live usb-guard %p"

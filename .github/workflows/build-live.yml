@@ -1,0 +1,67 @@
+# Builds the run-from-stick image and publishes it as the "live-latest" release.
+# Also boots it in a virtual PC (old BIOS and UEFI) and keeps screenshots.
+name: Build run-from-stick image
+on:
+  workflow_dispatch:
+  push:
+    branches: [usb-live]
+    paths: ["live/**", "scripts/**", "agent/**", "system/**", "policies/**", "groups/**", "branding/**", ".github/workflows/build-live.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: build-live
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false   # the repo copy goes into a public image
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mmdebstrap squashfs-tools dosfstools e2fsprogs grub-pc-bin grub2-common xz-utils fdisk qemu-system-x86 ovmf socat imagemagick
+      - name: Get the current Debian archive keyring
+        run: docker run --rm debian:trixie cat /usr/share/keyrings/debian-archive-keyring.gpg > debian-keyring.gpg
+      - name: Build
+        run: sudo sh live/build-live.sh out "$PWD/debian-keyring.gpg"
+      - name: Test boot in a virtual PC (BIOS and UEFI)
+        run: |
+          xz -dc out/kiosk-os-live.img.xz > test.img
+          mkdir -p shots
+          sudo chmod 666 /dev/kvm 2>/dev/null || true
+          ACCEL=$( [ -e /dev/kvm ] && echo "-enable-kvm -cpu host" || echo "" )
+          for mode in bios uefi; do
+            cp test.img $mode.img
+            FW=""; [ $mode = uefi ] && FW="-bios /usr/share/ovmf/OVMF.fd"
+            qemu-system-x86_64 $ACCEL -m 3072 -smp 2 $FW -drive file=$mode.img,format=raw,if=none,id=stick \
+              -device qemu-xhci -device usb-storage,drive=stick -vga std -display none \
+              -monitor unix:mon-$mode,server,nowait -serial file:serial-$mode.txt &
+            for t in 20 60 120 200; do
+              sleep $(( t - ${prev:-0} )); prev=$t
+              echo "screendump shots/$mode-${t}s.ppm" | socat - UNIX-CONNECT:mon-$mode || true
+            done
+            prev=0
+            echo quit | socat - UNIX-CONNECT:mon-$mode || true
+            wait || true
+          done
+          for f in shots/*.ppm; do convert "$f" "${f%.ppm}.png" && rm "$f"; done || true
+          ls -la shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: boot-screenshots
+          path: shots/
+      - name: Publish as the "live-latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete live-latest --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create live-latest -R "$GITHUB_REPOSITORY" --prerelease \
+            --title "Kiosk OS run-from-stick image (testing) $(cat out/version)" \
+            --notes "Write kiosk-os-live.img.xz to a USB stick (8 GB or larger) with balenaEtcher or Rufus, then boot the PC from the stick. Nothing is written to the PC's own drive. The other files are used by kiosks to update themselves. Built from ${GITHUB_SHA}." \
+            --target "${GITHUB_SHA}" \
+            out/kiosk-os-live.img.xz out/kiosk-os-live.img.xz.sha256 \
+            out/version out/vmlinuz out/initrd.img out/filesystem.squashfs out/SHA256SUMS
