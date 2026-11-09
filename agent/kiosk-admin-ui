@@ -282,13 +282,23 @@ class AdminWindow(Gtk.Window):
         if row is None:
             self.wifi_msg.set_text("Pick a network first.")
             return
-        cmd = ["nmcli", "device", "wifi", "connect", row.ssid]
-        if row.secured:
-            cmd += ["password", self.wifi_password.get_text()]
-        self.wifi_msg.set_text("Connecting to %s…" % row.ssid)
+        ssid, password = row.ssid, self.wifi_password.get_text()
+        self.wifi_msg.set_text("Connecting to %s…" % ssid)
 
         def work():
-            code, out = run(*cmd)
+            saved = run("nmcli", "-g", "NAME", "connection", "show")[1].splitlines()
+            if ssid in saved and not password:
+                # Joined before: reuse the saved settings
+                code, out = run("nmcli", "connection", "up", "id", ssid)
+            else:
+                # Remove an old or broken saved entry first; reusing one with a
+                # new password fails with "802-11-wireless-security..." errors
+                if ssid in saved:
+                    run("nmcli", "connection", "delete", "id", ssid)
+                cmd = ["nmcli", "device", "wifi", "connect", ssid]
+                if row.secured:
+                    cmd += ["password", password]
+                code, out = run(*cmd)
             msg = ("Connected to %s." % row.ssid) if code == 0 else ("Could not connect: " + out)
             GLib.idle_add(self.wifi_msg.set_text, msg)
         threading.Thread(target=work, daemon=True).start()
