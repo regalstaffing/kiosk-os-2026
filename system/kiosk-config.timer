@@ -1,0 +1,10 @@
+[Unit]
+Description=Check GitHub for kiosk group settings changes every 15 minutes
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=15min
+RandomizedDelaySec=2min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,221 @@
+#!/usr/bin/python3
+"""Apply this kiosk's group settings (groups/<group>.toml in the repository).
+
+  kiosk-config apply [--fetch]   apply the group file (--fetch: get the latest from GitHub first)
+  kiosk-config check FILE...     only check files for mistakes (used on GitHub before changes go out)
+  kiosk-config show              print which group and branch this kiosk follows
+
+The group and branch are set in /etc/kiosk/group (GROUP=..., BRANCH=...).
+If the group file is missing or has a mistake, or GitHub cannot be reached,
+the kiosk keeps its last working settings (/etc/kiosk/config.toml).
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+import tomllib
+
+GROUP_FILE = "/etc/kiosk/group"
+REPO_FILE = "/etc/kiosk/repo"
+LAST_GOOD = "/etc/kiosk/config.toml"
+SETTINGS = "/etc/kiosk/settings"
+POLICY = "/etc/chromium/policies/managed/kiosk.json"
+END_SESSION = "http://127.0.0.1:8099"
+
+SITE_RE = re.compile(r"^(https?://)?[A-Za-z0-9*][A-Za-z0-9.*-]*(:\d+)?(/\S*)?$")
+
+
+def log(msg):
+    print(msg, flush=True)
+
+
+def read_keyvals(path, defaults):
+    values = dict(defaults)
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    values[k.strip()] = v.strip()
+    except FileNotFoundError:
+        pass
+    return values
+
+
+def validate(text):
+    """Return (settings, problems). settings is None when the file can't be used."""
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as e:
+        return None, ["not valid TOML: %s" % e]
+    problems = []
+
+    homes = data.get("home_pages")
+    if not isinstance(homes, list) or not homes:
+        problems.append("home_pages must be a list with at least one page")
+    elif not all(isinstance(h, str) and re.match(r"^https?://\S+$", h) for h in homes):
+        problems.append("every home page must start with http:// or https:// and have no spaces")
+
+    new_tab = data.get("new_tab_page", homes[0] if isinstance(homes, list) and homes else None)
+    if not (isinstance(new_tab, str) and re.match(r"^https?://\S+$", new_tab)):
+        problems.append("new_tab_page must start with http:// or https://")
+
+    sites = data.get("allow", {}).get("sites")
+    if not isinstance(sites, list) or not sites:
+        problems.append("[allow] sites must be a list with at least one site")
+    else:
+        for s in sites:
+            if not isinstance(s, str) or not SITE_RE.match(s) or s.strip("*./") == "":
+                problems.append("[allow] sites: %r is not a site address" % (s,))
+
+    idle = data.get("session", {}).get("idle_minutes", 6)
+    if isinstance(idle, bool) or not isinstance(idle, (int, float)) or not 0 <= idle <= 240:
+        problems.append("[session] idle_minutes must be a number from 0 to 240")
+
+    printing = data.get("browser", {}).get("printing", False)
+    if not isinstance(printing, bool):
+        problems.append("[browser] printing must be true or false")
+
+    if problems:
+        return None, problems
+    return {
+        "home_pages": homes,
+        "new_tab_page": new_tab,
+        "sites": sites,
+        "idle_minutes": idle,
+        "printing": printing,
+    }, []
+
+
+def build_policy(base, s):
+    policy = dict(base)
+    policy["URLAllowlist"] = [END_SESSION] + s["sites"]
+    policy["RestoreOnStartup"] = 4
+    policy["RestoreOnStartupURLs"] = s["home_pages"]
+    policy["NewTabPageLocation"] = s["new_tab_page"]
+    policy["PrintingEnabled"] = s["printing"]
+    return policy
+
+
+def write_if_changed(path, text, mode=0o644):
+    try:
+        with open(path) as f:
+            if f.read() == text:
+                return False
+    except FileNotFoundError:
+        pass
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".new"
+    with open(tmp, "w") as f:
+        f.write(text)
+    os.chmod(tmp, mode)
+    os.replace(tmp, path)
+    return True
+
+
+def git(repo, *args, timeout=60):
+    return subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True,
+                          timeout=timeout)
+
+
+def candidate_texts(repo, group, branch, fetch):
+    """Group file sources, best first: GitHub branch, last working copy, local copy."""
+    path = "groups/%s.toml" % group
+    if fetch:
+        try:
+            r = git(repo, "fetch", "--quiet", "origin",
+                    "+refs/heads/%s:refs/remotes/origin/%s" % (branch, branch), timeout=30)
+            if r.returncode:
+                log("could not reach GitHub: %s" % r.stderr.strip())
+        except subprocess.TimeoutExpired:
+            log("could not reach GitHub: timed out")
+    r = git(repo, "show", "origin/%s:%s" % (branch, path))
+    if r.returncode == 0:
+        yield "%s on branch %s" % (path, branch), r.stdout
+    else:
+        log("%s not found on branch %s" % (path, branch))
+    try:
+        with open(LAST_GOOD) as f:
+            yield "last working settings", f.read()
+    except FileNotFoundError:
+        pass
+    try:
+        with open(os.path.join(repo, path)) as f:
+            yield "local copy of " + path, f.read()
+    except FileNotFoundError:
+        pass
+
+
+def apply(fetch):
+    try:
+        with open(REPO_FILE) as f:
+            repo = f.read().strip() or "/opt/kiosk-os"
+    except FileNotFoundError:
+        repo = "/opt/kiosk-os"
+    dev = read_keyvals(GROUP_FILE, {"GROUP": "default", "BRANCH": "main"})
+    group, branch = dev["GROUP"], dev["BRANCH"]
+
+    settings = text = None
+    for source, candidate in candidate_texts(repo, group, branch, fetch):
+        settings, problems = validate(candidate)
+        if settings:
+            text = candidate
+            log("using %s" % source)
+            break
+        log("ignoring %s, it has mistakes:\n  %s" % (source, "\n  ".join(problems)))
+    if not settings:
+        log("no usable group settings; keeping the current browser policy")
+        return 1
+
+    with open(os.path.join(repo, "policies/kiosk.json")) as f:
+        base = json.load(f)
+    changed = write_if_changed(POLICY, json.dumps(build_policy(base, settings), indent=2) + "\n")
+
+    current = read_keyvals(SETTINGS, {})
+    idle = settings["idle_minutes"]
+    idle = str(int(idle)) if float(idle).is_integer() else str(idle)
+    if current.get("IDLE_MINUTES") != idle:
+        try:
+            with open(SETTINGS) as f:
+                lines = [l for l in f.read().splitlines() if not l.strip().startswith("IDLE_MINUTES")]
+        except FileNotFoundError:
+            lines = ["# /etc/kiosk/settings — written by kiosk-config from the group file"]
+        lines.append("IDLE_MINUTES=" + idle)
+        changed |= write_if_changed(SETTINGS, "\n".join(lines) + "\n")
+
+    write_if_changed(LAST_GOOD, text)
+    log("group %s (branch %s): %s" % (group, branch, "settings updated" if changed else "no changes"))
+    return 0
+
+
+def check(paths):
+    bad = 0
+    for path in paths:
+        with open(path) as f:
+            settings, problems = validate(f.read())
+        if settings:
+            print("OK      %s (%d sites, %d home pages)" % (path, len(settings["sites"]),
+                                                          len(settings["home_pages"])))
+        else:
+            bad += 1
+            print("PROBLEM %s\n  %s" % (path, "\n  ".join(problems)))
+    return 1 if bad else 0
+
+
+def main(argv):
+    if len(argv) >= 2 and argv[1] == "apply":
+        return apply("--fetch" in argv[2:])
+    if len(argv) >= 3 and argv[1] == "check":
+        return check(argv[2:])
+    if len(argv) == 2 and argv[1] == "show":
+        dev = read_keyvals(GROUP_FILE, {"GROUP": "default", "BRANCH": "main"})
+        print("Group: %s\nBranch: %s" % (dev["GROUP"], dev["BRANCH"]))
+        return 0
+    print(__doc__.strip())
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

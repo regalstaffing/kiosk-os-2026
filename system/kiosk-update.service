@@ -10,6 +10,8 @@ ConditionPathExists=/etc/kiosk/repo
 [Service]
 Type=oneshot
 ExecStart=/usr/local/sbin/kiosk-autoupdate
+# Then apply this kiosk's group settings (keeps the last working ones on failure)
+ExecStart=-/usr/local/sbin/kiosk-config apply --fetch
 StandardOutput=journal
 StandardError=journal
 TimeoutStartSec=20min

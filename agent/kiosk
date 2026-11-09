@@ -13,6 +13,27 @@ case "$1" in
         git -C "$REPO" pull && sh "$REPO/scripts/setup.sh"
         echo "Type 'reboot' to apply."
         ;;
+    group)
+        if [ -z "$2" ]; then
+            kiosk-config show
+            echo "Groups available: $(cd "$REPO/groups" && ls *.toml | sed 's/\.toml$//' | tr '\n' ' ')"
+            echo "To change: kiosk group NAME [BRANCH]   (BRANCH: main, or patch-experimental for testing)"
+            exit 0
+        fi
+        GROUP=$2
+        BRANCH=${3:-$(sed -n 's/^BRANCH=//p' /etc/kiosk/group 2>/dev/null)}
+        BRANCH=${BRANCH:-main}
+        git -C "$REPO" fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || { echo "Branch $BRANCH not found"; exit 1; }
+        git -C "$REPO" cat-file -e "origin/$BRANCH:groups/$GROUP.toml" 2>/dev/null || { echo "groups/$GROUP.toml not found on branch $BRANCH"; exit 1; }
+        printf 'GROUP=%s\nBRANCH=%s\n' "$GROUP" "$BRANCH" > /etc/kiosk/group
+        if [ "$(git -C "$REPO" rev-parse --abbrev-ref HEAD)" != "$BRANCH" ]; then
+            # The kiosk software follows the same branch as the settings
+            git -C "$REPO" checkout -B "$BRANCH" --track "origin/$BRANCH" && sh "$REPO/scripts/setup.sh"
+            echo "Type 'reboot' to apply."
+        else
+            kiosk-config apply --fetch
+        fi
+        ;;
     status)
         systemctl --no-pager status kiosk.service kiosk-sessiond.service
         ;;
@@ -21,13 +42,16 @@ case "$1" in
         echo "Browser home settings:"
         grep -iE '"(Homepage|NewTabPage|ShowHomeButton)' /etc/chromium/policies/managed/kiosk.json
         echo "End session page: $(python3 -c 'import urllib.request;print(urllib.request.urlopen("http://127.0.0.1:8099/").status)' 2>&1 | tail -1)"
+        kiosk-config show
         echo "Idle wipe: $(grep IDLE_MINUTES /etc/kiosk/settings)"
+        echo "Last settings check: $(journalctl -u kiosk-config -u kiosk-update -n 1 --no-pager -o cat 2>/dev/null | tail -1)"
         ;;
     *)
-        echo "Usage: kiosk back | end-session | update | status | check"
+        echo "Usage: kiosk back | end-session | update | group | status | check"
         echo "  back         return to the kiosk screen"
         echo "  end-session  wipe the current session and return"
         echo "  update       pull the latest kiosk files and apply them (also runs at every boot)"
+        echo "  group        show or change this kiosk's settings group and branch"
         echo "  status       show the kiosk services"
         echo "  check        show versions and settings for troubleshooting"
         ;;

@@ -4,6 +4,7 @@
   kiosk back         return to the kiosk screen
   kiosk end-session  wipe the current session and return
   kiosk update       pull the latest kiosk files and apply them
+  kiosk group        show or change this kiosk's settings group
   kiosk status       show the kiosk services
   kiosk check        show versions and settings for troubleshooting
   nmtui              network and Wi-Fi settings (text menus)

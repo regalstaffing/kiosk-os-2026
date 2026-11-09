@@ -1,0 +1,12 @@
+[Unit]
+Description=Kiosk group settings check
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/kiosk/repo
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kiosk-config apply --fetch
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=2min

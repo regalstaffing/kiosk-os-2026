@@ -103,6 +103,7 @@ class Session:
         self.idle_seconds = idle_seconds
         self.last_input = time.monotonic()
         self.used = False  # any input since the last wipe
+        self.settings_mtime = None
 
     def touch(self):
         with self.lock:
@@ -125,7 +126,23 @@ class Session:
         with self.lock:
             return time.monotonic() - self.last_input
 
+    def reload_settings(self):
+        """Pick up a new idle time written by kiosk-config."""
+        try:
+            mtime = os.stat(SETTINGS).st_mtime
+        except OSError:
+            return
+        if mtime == self.settings_mtime:
+            return
+        self.settings_mtime = mtime
+        seconds = idle_seconds_from(load_settings())
+        if seconds != self.idle_seconds:
+            log("idle wipe now after %d s" % seconds)
+            with self.lock:
+                self.idle_seconds = seconds
+
     def check_idle(self):
+        self.reload_settings()
         idle = self.idle_for()
         with self.lock:
             due = self.used and self.idle_seconds > 0 and idle >= self.idle_seconds
@@ -268,13 +285,17 @@ def make_handler(session):
     return Handler
 
 
-def main():
-    settings = load_settings()
+def idle_seconds_from(settings):
     try:
-        idle_seconds = int(float(settings["IDLE_MINUTES"]) * 60)
+        return int(float(settings["IDLE_MINUTES"]) * 60)
     except ValueError:
-        idle_seconds = 360
-    session = Session(idle_seconds)
+        return 360
+
+
+def main():
+    session = Session(idle_seconds_from(load_settings()))
+    session.reload_settings()
+    idle_seconds = session.idle_seconds
     server = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), make_handler(session))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     log("kiosk-sessiond started, idle wipe after %d s" % idle_seconds)

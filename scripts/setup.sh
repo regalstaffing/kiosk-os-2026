@@ -40,6 +40,9 @@ install -D -m 644 "$REPO/system/kiosk-sessiond.service" /etc/systemd/system/kios
 install -D -m 755 "$REPO/agent/kiosk-sessiond"         /usr/local/sbin/kiosk-sessiond
 install -D -m 755 "$REPO/agent/kiosk"                  /usr/local/sbin/kiosk
 install -D -m 755 "$REPO/agent/kiosk-admin-ui"         /usr/local/sbin/kiosk-admin-ui
+install -D -m 755 "$REPO/agent/kiosk-config"          /usr/local/sbin/kiosk-config
+install -D -m 644 "$REPO/system/kiosk-config.service"  /etc/systemd/system/kiosk-config.service
+install -D -m 644 "$REPO/system/kiosk-config.timer"    /etc/systemd/system/kiosk-config.timer
 install -D -m 755 "$REPO/agent/kiosk-autoupdate"       /usr/local/sbin/kiosk-autoupdate
 install -D -m 644 "$REPO/system/kiosk-update.service"  /etc/systemd/system/kiosk-update.service
 install -D -m 755 "$REPO/agent/kiosk-browser"          /usr/local/bin/kiosk-browser
@@ -57,6 +60,12 @@ udevadm trigger --subsystem-match=input --action=change 2>/dev/null || true
 mkdir -p /etc/kiosk
 echo "$REPO" > /etc/kiosk/repo
 [ -e /etc/kiosk/settings ] || install -D -m 644 "$REPO/system/settings" /etc/kiosk/settings
+# Which group settings file (groups/<GROUP>.toml) and branch this kiosk follows.
+# Kept once created; change it with "kiosk group".
+[ -e /etc/kiosk/group ] || printf 'GROUP=default\nBRANCH=main\n' > /etc/kiosk/group
+
+echo "==> Applying group settings"
+/usr/local/sbin/kiosk-config apply || echo "Group settings not applied; using the built-in defaults"
 
 echo "==> Installing branding and boot splash"
 THEME=/usr/share/plymouth/themes/kiosk
@@ -82,7 +91,7 @@ update-grub
 
 systemctl daemon-reload
 systemctl set-default graphical.target
-systemctl enable kiosk.service kiosk-sessiond.service kiosk-update.service
+systemctl enable kiosk.service kiosk-sessiond.service kiosk-update.service kiosk-config.timer
 
 echo
 echo "Done. Type 'reboot' and press Enter to start the kiosk."

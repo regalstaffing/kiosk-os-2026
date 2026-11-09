@@ -1,0 +1,19 @@
+# Checks every group settings file for mistakes whenever one changes.
+# A red X on the commit means kiosks will ignore that file and keep their
+# last working settings until it is fixed.
+name: Check group settings
+on:
+  push:
+    paths: ["groups/**", "agent/kiosk-config"]
+  pull_request:
+    paths: ["groups/**", "agent/kiosk-config"]
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 agent/kiosk-config check groups/*.toml

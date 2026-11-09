@@ -1,0 +1,100 @@
+# Settings for the "default" group of kiosks.
+# Edit this file on GitHub; kiosks in this group pick up changes automatically.
+# NEVER put passwords or other sensitive information in this repository: it is public.
+#
+# A line starting with # is a note and is ignored. Text goes in "double quotes".
+
+# Pages opened at the start of every session (one tab each).
+home_pages = [
+    "https://www.regalstaffing.com/portal",
+    "https://infinitelooper.tube/?videoId=6ah4yixGWc4&start=0&end=351.3&rate=1&timestamp=1758116636318",
+    "https://infinitelooper.tube/?videoId=uCD2Qir8d_w&start=0&end=2136&rate=1&timestamp=1738784682817",
+]
+
+# Page opened by the "new tab" button. Leave out to use the first home page.
+new_tab_page = "https://www.regalstaffing.com/portal"
+
+[session]
+# Wipe the session after this many minutes with no keyboard, mouse or touch input. 0 = never.
+idle_minutes = 6
+
+[browser]
+# Allow printing (needs a printer set up on the kiosk).
+printing = false
+
+[allow]
+# Sites applicants may open. Everything else is blocked.
+# "example.com" allows the whole site and its subdomains;
+# "example.com/some/page" allows only that page and the pages under it.
+sites = [
+    "applyregal.com",
+    "regalstaffing.com",
+    "avionte.regalstaffing.com",
+    "regal.myavionte.com",
+    "avionte.com",
+    "hire.myavionte.com",
+    "myavionte.com",
+    "tcs.adp.com",
+    "wotc.adp.com",
+    "benfits.verisourcesvc.com",
+    "verisourcesvc.com",
+    "globalcashcard.com",
+    "uscis.gov",
+    "irs.com",
+    "irs.gov",
+    "maps.google.com",
+    "google.com/maps",
+    "rts.avionte.com",
+    "rts.aviontego.com",
+    "indeed.com",
+    "secure.na2.echosign.com",
+    "echosign.com",
+    "yahoo.com",
+    "google.com",
+    "www.google.com",
+    "accounts.google.com",
+    "myaccount.google.com",
+    "gmail.com",
+    "mail.google.com",
+    "accounts.google.at",
+    "login.yahoo.com",
+    "s.yimg.com",
+    "fc.yahoo.com",
+    "outlook.live.com",
+    "account.live.com",
+    "signup.live.com",
+    "login.live.com",
+    "www.icloud.com",
+    "appleid.cdn-apple.com",
+    "appleid.cdnapple.com",
+    "idmsa.apple.com",
+    "iforgot.apple.com",
+    "login.aol.com",
+    "aol.com",
+    "guce.aol.com",
+    "login.xfinity.com",
+    "idm.xfinity.com",
+    "sendgrid.net",
+    "ct.sendgrid.net",
+    "virtualriskmanager.net",
+    "app.virtualriskmanager.net",
+    "smithsystem.net",
+    "app.smithsystem.net",
+    "nestle.com",
+    "nestle.net",
+    "app.nestle",
+    "online.liftcertified.com",
+    "liftcertified.com",
+    "typingtest.com",
+    "vimeo.com/589485470",
+    "vimeo.com/452300291",
+    "vimeo.com/452552796",
+    "regalsite.squarespace.com",
+    "teams.microsoft.com",
+    "login.microsoft.com",
+    "microsoft.com",
+    "porteus-kiosk.org",
+    "infinitelooper.tube",
+    "youtube.com",
+    "benefits.hooray360.com",
+]
