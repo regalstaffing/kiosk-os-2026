@@ -1,0 +1,124 @@
+#!/usr/bin/python3
+"""Identify this computer for the management app.
+
+  kiosk-hwid          print a summary
+  kiosk-hwid --json   print everything as JSON (sent with each check-in)
+
+The PC is identified by the first trustworthy value of: PC serial number,
+motherboard serial number, firmware UUID, wired network card address. All
+values are reported, so the app can still recognise a PC if one changes.
+Runs as root (the firmware serial numbers are root-only).
+"""
+import glob
+import json
+import os
+import re
+import sys
+
+DMI = "/sys/class/dmi/id"
+
+# Placeholder values that manufacturers leave in the firmware
+JUNK = {
+    "", "none", "null", "n/a", "na", "0", "00000000", "0123456789", "1234567890",
+    "to be filled by o.e.m.", "to be filled by oem", "default string", "not specified",
+    "not applicable", "system serial number", "chassis serial number", "base board serial number",
+    "serial number", "oem", "invalid", "unknown", "xxxxxxxx", "123456789", "empty",
+}
+FAKE_UUIDS = {
+    "03000200-0400-0500-0006-000700080009",
+    "00020003-0004-0005-0006-000700080009",
+}
+
+
+def dmi(name):
+    try:
+        with open(os.path.join(DMI, name)) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def good_serial(v):
+    s = v.strip()
+    if s.lower() in JUNK or len(s) < 4:
+        return False
+    if len(set(s.replace("-", ""))) <= 1:          # e.g. 0000000 or FFFFFFF
+        return False
+    return True
+
+
+def good_uuid(v):
+    u = v.strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", u):
+        return False
+    if u in FAKE_UUIDS or len(set(u.replace("-", ""))) <= 1:
+        return False
+    return True
+
+
+def network_cards():
+    """Physical network cards: (name, mac, wired?)."""
+    cards = []
+    for path in sorted(glob.glob("/sys/class/net/*")):
+        name = os.path.basename(path)
+        if not os.path.exists(os.path.join(path, "device")):
+            continue                                  # virtual (lo, bridges, ...)
+        try:
+            with open(os.path.join(path, "address")) as f:
+                mac = f.read().strip().lower()
+        except OSError:
+            continue
+        if not re.fullmatch(r"([0-9a-f]{2}:){5}[0-9a-f]{2}", mac) or mac == "00:00:00:00:00:00":
+            continue
+        wired = not os.path.exists(os.path.join(path, "wireless")) and not os.path.exists(os.path.join(path, "phy80211"))
+        bus = os.path.realpath(os.path.join(path, "device"))
+        cards.append({"name": name, "mac": mac, "wired": wired, "usb": "/usb" in bus})
+    return cards
+
+
+def identify():
+    info = {
+        "vendor": dmi("sys_vendor"),
+        "model": dmi("product_name"),
+        "pc_serial": dmi("product_serial"),
+        "board_serial": dmi("board_serial"),
+        "uuid": dmi("product_uuid").lower(),
+        "network_cards": network_cards(),
+    }
+    # Built-in (not USB) wired card first: a USB adapter can move between PCs
+    builtin_wired = [c["mac"] for c in info["network_cards"] if c["wired"] and not c["usb"]]
+
+    if good_serial(info["pc_serial"]):
+        pc_id, source = "serial:" + info["pc_serial"], "PC serial number"
+    elif good_serial(info["board_serial"]):
+        pc_id, source = "board:" + info["board_serial"], "motherboard serial number"
+    elif good_uuid(info["uuid"]):
+        pc_id, source = "uuid:" + info["uuid"], "firmware ID"
+    elif builtin_wired:
+        pc_id, source = "mac:" + builtin_wired[0], "network card address"
+    else:
+        try:
+            with open("/etc/kiosk/device-id") as f:
+                pc_id, source = "stick:" + f.read().strip(), "stick ID (no PC ID found)"
+        except OSError:
+            pc_id, source = "", "none found"
+    info["pc_id"] = pc_id
+    info["pc_id_source"] = source
+    return info
+
+
+def main(argv):
+    info = identify()
+    if "--json" in argv:
+        print(json.dumps(info, indent=2))
+        return 0
+    print("PC: %s %s" % (info["vendor"], info["model"]))
+    print("PC ID: %s  (from %s)" % (info["pc_id"] or "-", info["pc_id_source"]))
+    for c in info["network_cards"]:
+        print("Network card %s: %s (%s%s)" % (c["name"], c["mac"], "wired" if c["wired"] else "Wi-Fi",
+                                               ", USB" if c["usb"] else ""))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

@@ -163,7 +163,7 @@ status() {
     echo "Running version: $(cat /etc/kiosk/version 2>/dev/null)  (slot $(running_slot))"
     for s in A B; do echo "Slot $s: $(cat "$MEDIUM/live/$s/version" 2>/dev/null || echo empty)"; done
     with_efi grubenv list 2>/dev/null
-    echo "Device ID: $(cat /etc/kiosk/device-id 2>/dev/null)"
+    echo "Stick ID: $(cat /etc/kiosk/device-id 2>/dev/null)"
 }
 
 case "${1:-}" in

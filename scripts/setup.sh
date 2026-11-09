@@ -51,6 +51,7 @@ install -D -m 644 "$REPO/system/kiosk-sessiond.service" /etc/systemd/system/kios
 install -D -m 755 "$REPO/agent/kiosk-sessiond"         /usr/local/sbin/kiosk-sessiond
 install -D -m 755 "$REPO/agent/kiosk"                  /usr/local/sbin/kiosk
 install -D -m 755 "$REPO/agent/kiosk-admin-ui"         /usr/local/sbin/kiosk-admin-ui
+install -D -m 755 "$REPO/agent/kiosk-hwid"            /usr/local/sbin/kiosk-hwid
 install -D -m 755 "$REPO/agent/kiosk-config"          /usr/local/sbin/kiosk-config
 install -D -m 644 "$REPO/system/kiosk-config.service"  /etc/systemd/system/kiosk-config.service
 install -D -m 644 "$REPO/system/kiosk-config.timer"    /etc/systemd/system/kiosk-config.timer

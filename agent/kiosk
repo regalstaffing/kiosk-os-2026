@@ -52,6 +52,7 @@ case "$1" in
         echo "Browser home settings:"
         grep -iE '"(Homepage|NewTabPage|ShowHomeButton)' /etc/chromium/policies/managed/kiosk.json
         echo "End session page: $(python3 -c 'import urllib.request;print(urllib.request.urlopen("http://127.0.0.1:8099/").status)' 2>&1 | tail -1)"
+        kiosk-hwid
         kiosk-config show
         [ -d /run/live/medium/live ] && kiosk-live status
         echo "Idle wipe: $(grep IDLE_MINUTES /etc/kiosk/settings)"
