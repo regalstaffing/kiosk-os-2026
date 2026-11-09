@@ -102,6 +102,34 @@ dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .err { color: var(--bad); font-size: 13px; }
 .sitelist { font-family: var(--font-data); font-size: 13px; min-height: 220px; }
 .banner { border: 1px solid var(--warn); background: var(--warn-soft); color: var(--fg); border-radius: 6px; padding: 10px 12px; font-size: 14px; margin-bottom: 14px; }
+.chk { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.chk + .chk { margin-top: 6px; }
+.chk:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.chk input { margin-top: 3px; }
+.chk .meta { color: var(--muted); font-size: 13px; }
+.chk a { font-size: 13px; color: var(--accent); margin-left: auto; white-space: nowrap; }
+.st-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.st-tools input[type=search] { flex: 1 1 180px; min-width: 0; }
+.st-add { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.st-add input { flex: 1 1 160px; min-width: 0; }
+.st-wrap { border: 1px solid var(--line); border-radius: 6px; max-height: 420px; overflow: auto; }
+.st-wrap table { min-width: 0; }
+.st-wrap th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.st-wrap th button.sort { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; }
+.st-wrap td { padding: 7px 12px; }
+.st-wrap td.site { font-family: var(--font-data); font-size: 13px; overflow-wrap: anywhere; }
+.st-wrap td.note { color: var(--muted); font-size: 13px; }
+.st-wrap td.act { text-align: right; width: 1%; white-space: nowrap; }
+button.link { border: 0; background: none; color: var(--muted); font-weight: 500; font-size: 13px; padding: 2px 6px; }
+.st-wrap .sn { display: none; color: var(--muted); font-family: var(--font-ui, inherit); font-size: 12px; }
+@media (max-width: 560px) { .st-wrap th.note, .st-wrap td.note { display: none; } .st-wrap .sn { display: block; } }
+button.link:hover { color: var(--bad); }
+.st-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-top: 8px; color: var(--muted); font-size: 13px; }
+.import { border: 1px dashed var(--accent); border-radius: 6px; padding: 12px; margin-bottom: 10px; background: var(--accent-soft); }
+.import ul { margin: 6px 0; padding-left: 18px; font-family: var(--font-data); font-size: 12px; max-height: 120px; overflow: auto; }
+.src { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--bg); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+.section-title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 18px 0 8px; }
+.section-title:first-child { margin-top: 0; }
 @media (max-width: 760px) {
   .shell { grid-template-columns: 1fr; }
   nav { flex-direction: row; flex-wrap: wrap; align-items: center; border-right: 0; border-bottom: 1px solid var(--line); padding-block: 10px; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -122,6 +150,7 @@ dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
     </div>
     <a href="#devices" data-nav="devices">Devices <span class="count" id="nav-devices"></span></a>
     <a href="#groups" data-nav="groups">Groups <span class="count" id="nav-groups"></span></a>
+    <a href="#sitelists" data-nav="sitelists">Site lists <span class="count" id="nav-sitelists"></span></a>
     <a href="#password" data-nav="password">Admin password</a>
     <div class="theme" role="group" aria-label="Appearance">
       <button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button><button type="button" data-theme-set="system">Auto</button>
@@ -139,20 +168,59 @@ const MIN = 60e3, HOUR = 60 * MIN, DAY = 24 * HOUR;
 const LATEST = "cadc9f2";
 
 const db = {
+  // Reusable lists of allowed sites. A group switches whole lists on or off.
+  siteLists: [
+    { id: "core", name: "Regal core", description: "Company site, applications and onboarding. Every group should have this.",
+      sites: [
+        { site: "regalstaffing.com", note: "Company site and applicant portal" },
+        { site: "applyregal.com", note: "Application form" },
+        { site: "avionte.regalstaffing.com", note: "" },
+        { site: "regal.myavionte.com", note: "Onboarding" },
+      ] },
+    { id: "payroll", name: "Payroll and tax", description: "Pay stubs, W-2s and tax forms.",
+      sites: [
+        { site: "tcs.adp.com", note: "ADP time and pay" },
+        { site: "my.adp.com", note: "" },
+        { site: "irs.gov", note: "W-4 and tax forms" },
+        { site: "ssa.gov", note: "Social Security" },
+      ] },
+    { id: "eligibility", name: "ID and work eligibility", description: "I-9 documents and right-to-work checks.",
+      sites: [
+        { site: "uscis.gov", note: "I-9 form and guidance" },
+        { site: "e-verify.gov", note: "" },
+        { site: "travel.state.gov", note: "Passport info" },
+      ] },
+    { id: "jobboards", name: "Job boards", description: "Outside job search sites applicants ask for.",
+      sites: ["indeed.com", "ziprecruiter.com", "linkedin.com/jobs", "glassdoor.com", "monster.com", "careerbuilder.com",
+        "simplyhired.com", "snagajob.com", "usajobs.gov", "workintexas.com", "myworkdayjobs.com", "jobs.lever.co",
+        "boards.greenhouse.io", "flexjobs.com", "dice.com", "roberthalf.com"].map(site => ({ site, note: "" })) },
+    { id: "videos", name: "Orientation videos", description: "Lobby and training videos.",
+      sites: [
+        { site: "infinitelooper.tube", note: "Lobby video loop" },
+        { site: "youtube.com", note: "" },
+        { site: "vimeo.com/589485470", note: "Safety orientation video" },
+      ] },
+    { id: "safety", name: "Safety training", description: "",
+      sites: [
+        { site: "osha.gov", note: "" },
+        { site: "cdc.gov/niosh", note: "" },
+      ] },
+  ],
   groups: [
     { id: "ungrouped", name: "Ungrouped", fixed: true,
       homePages: ["https://www.regalstaffing.com/portal"],
-      sites: ["regalstaffing.com", "applyregal.com", "regal.myavionte.com"],
+      siteLists: ["core"], sites: [],
       idleMinutes: 6, printing: false },
     { id: "lobby", name: "Lobby",
       homePages: ["https://www.regalstaffing.com/portal",
         "https://infinitelooper.tube/?videoId=6ah4yixGWc4&start=0&end=351.3&rate=1"],
-      sites: ["regalstaffing.com", "applyregal.com", "avionte.regalstaffing.com", "regal.myavionte.com",
-        "tcs.adp.com", "irs.gov", "uscis.gov", "e-verify.gov", "infinitelooper.tube", "youtube.com"],
+      siteLists: ["core", "payroll", "eligibility", "videos"],
+      sites: [{ site: "google.com/maps", note: "Directions to job sites" }],
       idleMinutes: 6, printing: false },
     { id: "training", name: "Training room",
       homePages: ["https://www.regalstaffing.com/portal"],
-      sites: ["regalstaffing.com", "applyregal.com", "regal.myavionte.com", "osha.gov", "vimeo.com/589485470"],
+      siteLists: ["core", "safety", "videos"],
+      sites: [{ site: "forklift-training.example.com", note: "Trial, remove after December" }],
       idleMinutes: 20, printing: true },
   ],
   devices: [
@@ -169,6 +237,13 @@ const db = {
 };
 
 const groupById = id => db.groups.find(g => g.id === id) || db.groups[0];
+const listById = id => db.siteLists.find(l => l.id === id);
+function effectiveSites(siteListIds, extra) {
+  const all = new Map();
+  siteListIds.map(listById).filter(Boolean).forEach(l => l.sites.forEach(x => { if (!all.has(x.site)) all.set(x.site, l.name); }));
+  extra.forEach(x => { if (!all.has(x.site)) all.set(x.site, "This group"); });
+  return all;
+}
 const deviceById = id => db.devices.find(d => d.id === id);
 
 // ---- Helpers ----
@@ -199,9 +274,11 @@ const lines = s => s.split("\n").map(x => x.trim()).filter(Boolean);
 const ui = { filter: "all", search: "", groupFilter: "", selected: new Set() };
 
 function renderNav(route) {
-  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", route.startsWith(a.dataset.nav.replace(/s$/, ""))));
+  const section = route.startsWith("sitelist") ? "sitelists" : route.startsWith("group") ? "groups" : route.startsWith("device") ? "devices" : route;
+  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.dataset.nav === section));
   $("#nav-devices").textContent = db.devices.length;
   $("#nav-groups").textContent = db.groups.length;
+  $("#nav-sitelists").textContent = db.siteLists.length;
 }
 
 function viewDevices() {
@@ -315,13 +392,13 @@ function viewGroups() {
       const members = db.devices.filter(d => d.group === g.id).length;
       return `<a class="panel gcard" href="#group-${g.id}">
         <div class="row" style="justify-content:space-between"><b>${esc(g.name)}</b>${g.fixed ? `<span class="dim">Default</span>` : ""}</div>
-        <div class="stats"><span>${members} device${members === 1 ? "" : "s"}</span><span>${g.sites.length} sites</span><span>Wipe after ${g.idleMinutes || "—"} min</span></div>
+        <div class="stats"><span>${members} device${members === 1 ? "" : "s"}</span><span>${effectiveSites(g.siteLists, g.sites).size} sites</span><span>Wipe after ${g.idleMinutes || "—"} min</span></div>
         <div class="dim mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.homePages[0])}</div></a>`; }).join("")}
     </div>`;
   $("#newGroup").onclick = () => {
     let n = 1; while (db.groups.some(g => g.id === "group-" + n)) n++;
     const base = groupById("ungrouped");
-    db.groups.push({ id: "group-" + n, name: "New group " + n, homePages: [...base.homePages], sites: [...base.sites], idleMinutes: base.idleMinutes, printing: false });
+    db.groups.push({ id: "group-" + n, name: "New group " + n, homePages: [...base.homePages], siteLists: [...base.siteLists], sites: [], idleMinutes: base.idleMinutes, printing: false });
     location.hash = "#group-group-" + n;
   };
 }
@@ -340,9 +417,18 @@ function viewGroup(id) {
         <div class="field"><label for="gHome">Home pages</label>
           <textarea id="gHome" class="sitelist" style="min-height:80px">${esc(g.homePages.join("\n"))}</textarea>
           <span class="hint">One per line. Each opens in its own tab at the start of a session.</span><span class="err" id="eHome"></span></div>
-        <div class="field"><label for="gSites">Allowed sites</label>
-          <textarea id="gSites" class="sitelist">${esc(g.sites.join("\n"))}</textarea>
-          <span class="hint">One per line. <span class="mono">example.com</span> allows the whole site; <span class="mono">example.com/jobs</span> allows only that page and below. Everything else is blocked.</span><span class="err" id="eSites"></span></div>
+        <div class="field"><span style="font-weight:600;font-size:14px">Allowed sites</span>
+          <span class="hint">Everything else is blocked. <span class="mono">example.com</span> allows the whole site; <span class="mono">example.com/jobs</span> allows only that page and below.</span></div>
+        <div class="section-title"><b style="font-size:14px">Site lists</b><a href="#sitelists" class="dim" style="font-size:13px">Manage site lists</a></div>
+        <div id="gLists">${db.siteLists.map(l => `<label class="chk"><input type="checkbox" data-list="${l.id}" ${g.siteLists.includes(l.id) ? "checked" : ""}>
+          <span><b>${esc(l.name)}</b> <span class="meta">${l.sites.length} site${l.sites.length === 1 ? "" : "s"}${l.description ? " · " + esc(l.description) : ""}</span></span>
+          <a href="#sitelist-${l.id}">View</a></label>`).join("")}</div>
+        <div class="section-title"><b style="font-size:14px">Extra sites for this group only</b></div>
+        <div id="gTable"></div>
+        <div class="section-title"><b style="font-size:14px" id="gTotal"></b><button type="button" class="link" id="gShowAll" style="color:var(--accent)">Show all</button></div>
+        <div id="gAll" hidden class="st-wrap" style="max-height:260px"></div>
+        <span class="err" id="eSites"></span>
+        <div style="height:14px"></div>
         <div class="row" style="gap:24px;margin-bottom:14px">
           <div class="field" style="margin:0"><label for="gIdle">Wipe after idle (minutes)</label><input type="number" id="gIdle" min="0" max="240" value="${g.idleMinutes}" style="width:120px"><span class="hint">0 = never</span></div>
           <div class="field" style="margin:0"><label for="gPrint">Printing</label><select id="gPrint"><option value="no">Off</option><option value="yes" ${g.printing ? "selected" : ""}>On</option></select></div>
@@ -357,17 +443,35 @@ function viewGroup(id) {
           : `<p class="dim">No devices yet. Assign kiosks from the Devices page.</p>`}
       </div>
     </div>`;
+  const draftLists = [...g.siteLists], draftSites = g.sites.map(x => ({ ...x }));
+  const drawTotal = () => {
+    const all = effectiveSites(draftLists, draftSites);
+    $("#gTotal").textContent = `${all.size} site${all.size === 1 ? "" : "s"} allowed in total`;
+    $("#gAll").innerHTML = `<table><thead><tr><th>Site</th><th>From</th></tr></thead><tbody>${[...all].sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([site, from]) => `<tr><td class="site">${esc(site)}</td><td><span class="src">${esc(from)}</span></td></tr>`).join("")}</tbody></table>`;
+  };
+  $("#gLists").onchange = e => {
+    const id = e.target.dataset.list; if (!id) return;
+    const i = draftLists.indexOf(id);
+    if (e.target.checked && i < 0) draftLists.push(id);
+    if (!e.target.checked && i >= 0) draftLists.splice(i, 1);
+    drawTotal();
+  };
+  $("#gShowAll").onclick = () => { const a = $("#gAll"); a.hidden = !a.hidden; $("#gShowAll").textContent = a.hidden ? "Show all" : "Hide"; };
+  siteTable.state["g-" + id] = null;
+  siteTable($("#gTable"), draftSites, drawTotal, "g-" + id);
+  drawTotal();
   $("#gForm").onsubmit = e => {
     e.preventDefault();
-    const home = lines($("#gHome").value), sites = lines($("#gSites").value);
-    const badHome = home.filter(h => !URL_RE.test(h)), badSites = sites.filter(s => !SITE_RE.test(s) || /^[*./]*$/.test(s));
+    const home = lines($("#gHome").value);
+    const badHome = home.filter(h => !URL_RE.test(h));
     $("#eHome").textContent = !home.length ? "Add at least one home page." : badHome.length ? "Must start with https:// — check: " + badHome.join(", ") : "";
-    $("#eSites").textContent = !sites.length ? "Add at least one allowed site." : badSites.length ? "Not a site address: " + badSites.join(", ") : "";
+    $("#eSites").textContent = effectiveSites(draftLists, draftSites).size ? "" : "Switch on a site list or add at least one site.";
     const idle = Number($("#gIdle").value);
     if ($("#eHome").textContent || $("#eSites").textContent) return;
     if (!(idle >= 0 && idle <= 240)) { toast("Idle time must be 0 to 240 minutes"); return; }
     if (!g.fixed) g.name = $("#gName").value.trim() || g.name;
-    Object.assign(g, { homePages: home, sites, idleMinutes: idle, printing: $("#gPrint").value === "yes" });
+    Object.assign(g, { homePages: home, siteLists: [...draftLists], sites: draftSites.map(x => ({ ...x })), idleMinutes: idle, printing: $("#gPrint").value === "yes" });
     toast(`Saved. ${members.length} device${members.length === 1 ? "" : "s"} update within 15 minutes.`); viewGroup(id);
   };
   if (!g.fixed) {
@@ -379,6 +483,244 @@ function viewGroup(id) {
       toast(`Deleted ${g.name}`); location.hash = "#groups";
     };
   }
+}
+
+// ---- Site table: search, sort, add, remove, import (CSV / Excel), copy ----
+// Clean up what people paste or import: "https://www.Example.com/" -> "example.com"
+function normalizeSite(raw) {
+  let s = String(raw || "").trim().replace(/^["']|["']$/g, "");
+  s = s.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/+$/, "");
+  const slash = s.indexOf("/");
+  return slash < 0 ? s.toLowerCase() : s.slice(0, slash).toLowerCase() + s.slice(slash);
+}
+const validSite = s => SITE_RE.test(s) && !/^[*./]*$/.test(s) && s.includes(".");
+
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (c === '"') q = false; else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === "," || c === ";" || c === "\t") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+
+let xlsxLoading = null;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve();
+  return xlsxLoading ||= new Promise((ok, fail) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    sc.onload = ok; sc.onerror = () => { xlsxLoading = null; fail(new Error("Could not load the Excel reader")); };
+    document.head.appendChild(sc);
+  });
+}
+
+// Turn spreadsheet rows into [{site, note}]: finds the site column by its heading
+// (site, url, domain, website, address) or by which column looks most like addresses.
+function rowsToSites(rows) {
+  if (!rows.length) return [];
+  const head = rows[0].map(h => String(h).trim().toLowerCase());
+  let siteCol = head.findIndex(h => /^(site|sites|url|urls|domain|domains|website|websites|address|web address)$/.test(h));
+  let noteCol = head.findIndex(h => /^(note|notes|description|comment|comments|purpose)$/.test(h));
+  let body = rows.slice(1);
+  if (siteCol < 0) {
+    body = rows;
+    const width = Math.max(...rows.map(r => r.length));
+    let best = 0, bestScore = -1;
+    for (let c = 0; c < width; c++) {
+      const score = rows.filter(r => validSite(normalizeSite(r[c]))).length;
+      if (score > bestScore) { best = c; bestScore = score; }
+    }
+    siteCol = best;
+    if (noteCol < 0 && width > 1) noteCol = siteCol === 0 ? 1 : 0;
+  }
+  return body.map(r => ({ raw: String(r[siteCol] ?? "").trim(), site: normalizeSite(r[siteCol]), note: noteCol >= 0 ? String(r[noteCol] ?? "").trim() : "" }))
+    .filter(x => x.raw);
+}
+
+async function readSiteFile(file) {
+  if (/\.(xlsx|xls|ods)$/i.test(file.name)) {
+    await loadXLSX();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    return rowsToSites(XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" }));
+  }
+  return rowsToSites(parseCSV(await file.text()));
+}
+
+// Renders an editable site table into `host`. `sites` is changed in place; onChange() after each edit.
+function siteTable(host, sites, onChange, key) {
+  const st = siteTable.state[key] ||= { q: "", sort: "az", sel: new Set(), pending: null };
+  const draw = () => {
+    const q = st.q.toLowerCase();
+    let shown = sites.map((x, i) => ({ ...x, i })).filter(x => !q || x.site.toLowerCase().includes(q) || x.note.toLowerCase().includes(q));
+    if (st.sort === "az") shown.sort((a, b) => a.site.localeCompare(b.site));
+    if (st.sort === "za") shown.sort((a, b) => b.site.localeCompare(a.site));
+    if (st.sort === "new") shown.sort((a, b) => b.i - a.i);
+    const p = st.pending;
+    host.innerHTML = `
+      ${p ? `<div class="import" role="region" aria-label="Import preview">
+        <b>${esc(p.file)}</b>: ${p.fresh.length} new site${p.fresh.length === 1 ? "" : "s"}, ${p.dupes.length} already in the list${p.bad.length ? `, ${p.bad.length} not recognised as site addresses (skipped)` : ""}.
+        ${p.bad.length ? `<ul>${p.bad.slice(0, 50).map(b => `<li>${esc(b)}</li>`).join("")}</ul>` : ""}
+        <div class="row" style="margin-top:8px">
+          <button type="button" class="primary" data-act="imp-add" ${p.fresh.length ? "" : "disabled"}>Add ${p.fresh.length} new</button>
+          <button type="button" data-act="imp-replace">Replace list with the ${p.fresh.length + p.dupes.length} imported</button>
+          <button type="button" data-act="imp-cancel">Cancel</button></div></div>` : ""}
+      <div class="st-add">
+        <input type="text" id="${key}-new" placeholder="Add a site, e.g. example.com" aria-label="Site to add">
+        <input type="text" id="${key}-note" placeholder="Note (optional)" aria-label="Note for the new site">
+        <button type="button" data-act="add">Add</button>
+      </div>
+      <div class="st-tools">
+        <input type="search" id="${key}-q" placeholder="Search ${sites.length} site${sites.length === 1 ? "" : "s"}" value="${esc(st.q)}" aria-label="Search sites">
+        <select id="${key}-sort" aria-label="Sort">
+          <option value="az" ${st.sort === "az" ? "selected" : ""}>A to Z</option>
+          <option value="za" ${st.sort === "za" ? "selected" : ""}>Z to A</option>
+          <option value="new" ${st.sort === "new" ? "selected" : ""}>Newest first</option></select>
+        <label class="row" style="gap:6px"><button type="button" data-act="import">Import CSV or Excel</button></label>
+        <input type="file" id="${key}-file" accept=".csv,.txt,.xlsx,.xls,.ods" hidden>
+      </div>
+      <div class="st-wrap"><table>
+        <thead><tr><th style="width:28px"><input type="checkbox" data-act="all" aria-label="Select all shown" ${shown.length && shown.every(x => st.sel.has(x.site)) ? "checked" : ""}></th>
+          <th><button type="button" class="sort" data-act="toggle-sort">Site ${st.sort === "za" ? "↑" : st.sort === "az" ? "↓" : ""}</button></th><th class="note">Note</th><th></th></tr></thead>
+        <tbody>${shown.map(x => `<tr>
+          <td><input type="checkbox" data-sel="${esc(x.site)}" ${st.sel.has(x.site) ? "checked" : ""} aria-label="Select ${esc(x.site)}"></td>
+          <td class="site">${esc(x.site)}${x.note ? `<div class="sn">${esc(x.note)}</div>` : ""}</td><td class="note">${esc(x.note)}</td>
+          <td class="act"><button type="button" class="link" data-del="${esc(x.site)}" aria-label="Remove ${esc(x.site)}">Remove</button></td></tr>`).join("") ||
+          `<tr><td colspan="4" class="dim">${sites.length ? "No sites match the search." : "No sites yet. Add one above or import a spreadsheet."}</td></tr>`}</tbody>
+      </table></div>
+      <div class="st-foot">
+        <span>${shown.length === sites.length ? `${sites.length} site${sites.length === 1 ? "" : "s"}` : `${shown.length} of ${sites.length} shown`}</span>
+        <span class="row">
+          ${st.sel.size ? `<button type="button" class="danger" data-act="del-sel">Remove ${st.sel.size} selected</button>` : ""}
+          <button type="button" data-act="copy" ${sites.length ? "" : "disabled"}>Copy as CSV</button></span>
+      </div>
+      <span class="err" id="${key}-err"></span>`;
+
+    const err = m => (host.querySelector(`#${key}-err`).textContent = m);
+    const changed = () => { onChange(); draw(); };
+    host.querySelector(`#${key}-q`).oninput = e => { st.q = e.target.value; const pos = e.target.selectionStart; draw(); const el = host.querySelector(`#${key}-q`); el.focus(); el.setSelectionRange(pos, pos); };
+    host.querySelector(`#${key}-sort`).onchange = e => { st.sort = e.target.value; draw(); };
+    const add = () => {
+      const raw = host.querySelector(`#${key}-new`).value, site = normalizeSite(raw);
+      if (!site) return;
+      if (!validSite(site)) return err(`"${raw}" is not a site address. Use a form like example.com or example.com/jobs.`);
+      if (sites.some(x => x.site === site)) return err(`${site} is already in this list.`);
+      sites.push({ site, note: host.querySelector(`#${key}-note`).value.trim() });
+      st.q = ""; changed(); host.querySelector(`#${key}-new`).focus();
+    };
+    host.querySelector(`#${key}-new`).onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); add(); } };
+    host.querySelector(`#${key}-note`).onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); add(); } };
+    host.querySelector(`#${key}-file`).onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        const rows = await readSiteFile(f), have = new Set(sites.map(x => x.site)), seen = new Set();
+        const fresh = [], dupes = [], bad = [];
+        rows.forEach(r => {
+          if (!validSite(r.site)) bad.push(r.raw);
+          else if (seen.has(r.site)) return;
+          else { seen.add(r.site); (have.has(r.site) ? dupes : fresh).push(r); }
+        });
+        st.pending = { file: f.name, fresh, dupes, bad }; draw();
+      } catch (ex) { err("Could not read " + f.name + ": " + ex.message); }
+    };
+    host.onclick = e => {
+      const t = e.target.closest("[data-act],[data-del]"); if (!t) return;
+      if (t.dataset.del) { sites.splice(sites.findIndex(x => x.site === t.dataset.del), 1); st.sel.delete(t.dataset.del); return changed(); }
+      const a = t.dataset.act;
+      if (a === "add") add();
+      if (a === "import") host.querySelector(`#${key}-file`).click();
+      if (a === "toggle-sort") { st.sort = st.sort === "az" ? "za" : "az"; draw(); }
+      if (a === "del-sel") { for (let i = sites.length - 1; i >= 0; i--) if (st.sel.has(sites[i].site)) sites.splice(i, 1); toast(`Removed ${st.sel.size} sites`); st.sel.clear(); changed(); }
+      if (a === "imp-add") { sites.push(...st.pending.fresh.map(({ site, note }) => ({ site, note }))); toast(`Added ${st.pending.fresh.length} sites`); st.pending = null; changed(); }
+      if (a === "imp-replace") { const all = [...st.pending.dupes, ...st.pending.fresh].map(({ site, note }) => ({ site, note })); sites.splice(0, sites.length, ...all); toast(`List replaced with ${all.length} sites`); st.pending = null; st.sel.clear(); changed(); }
+      if (a === "imp-cancel") { st.pending = null; draw(); }
+      if (a === "copy") {
+        const csv = "site,note\n" + [...sites].sort((x, y) => x.site.localeCompare(y.site)).map(x => `${x.site},"${x.note.replace(/"/g, '""')}"`).join("\n");
+        navigator.clipboard.writeText(csv).then(() => toast("Copied. Paste it into a spreadsheet."), () => err("Copy is blocked here. Select the sites in the table and copy them instead."));
+      }
+    };
+    host.onchange = e => {
+      const t = e.target;
+      if (t.dataset.sel !== undefined) { t.checked ? st.sel.add(t.dataset.sel) : st.sel.delete(t.dataset.sel); draw(); }
+      if (t.dataset.act === "all") { shown.forEach(x => t.checked ? st.sel.add(x.site) : st.sel.delete(x.site)); draw(); }
+    };
+  };
+  draw();
+}
+siteTable.state = {};
+
+// ---- Site lists ----
+function usedBy(listId) { return db.groups.filter(g => g.siteLists.includes(listId)); }
+
+function viewSiteLists() {
+  $("#view").innerHTML = `
+    <div class="head"><div><h1>Site lists</h1>
+      <p class="sub">Reusable sets of allowed sites. Switch a whole list on or off for a group, and every kiosk in that group follows. Change a list once and every group using it gets the change.</p></div>
+      <button class="primary" id="newList">New site list</button></div>
+    <div class="groups">${db.siteLists.map(l => {
+      const groups = usedBy(l.id);
+      return `<a class="panel gcard" href="#sitelist-${l.id}">
+        <b>${esc(l.name)}</b>
+        <div class="stats"><span>${l.sites.length} site${l.sites.length === 1 ? "" : "s"}</span><span>${groups.length ? "Used by " + groups.map(g => esc(g.name)).join(", ") : "Not used yet"}</span></div>
+        ${l.description ? `<div class="dim">${esc(l.description)}</div>` : ""}</a>`; }).join("")}
+    </div>`;
+  $("#newList").onclick = () => {
+    let n = 1; while (db.siteLists.some(l => l.id === "list-" + n)) n++;
+    db.siteLists.push({ id: "list-" + n, name: "New site list " + n, description: "", sites: [] });
+    location.hash = "#sitelist-list-" + n;
+  };
+}
+
+function viewSiteList(id) {
+  const l = listById(id);
+  if (!l) return viewMissing("That site list");
+  const draft = l.sites.map(x => ({ ...x }));
+  const groups = usedBy(l.id);
+  const kiosks = db.devices.filter(d => groups.some(g => g.id === d.group)).length;
+  $("#view").innerHTML = `
+    <a class="back" href="#sitelists">← All site lists</a>
+    <div class="head"><div><h1>${esc(l.name)}</h1>
+      <p class="sub">${groups.length ? `Used by ${groups.map(g => `<a href="#group-${g.id}">${esc(g.name)}</a>`).join(", ")} (${kiosks} kiosk${kiosks === 1 ? "" : "s"}).` : "Not used by any group yet. Switch it on from a group's page."}</p></div></div>
+    <div class="grid2">
+      <form class="panel card" id="lForm" novalidate>
+        <div class="field"><label for="lName">List name</label><input type="text" id="lName" value="${esc(l.name)}" maxlength="50"></div>
+        <div class="field"><label for="lDesc">Description</label><input type="text" id="lDesc" value="${esc(l.description)}" maxlength="140" placeholder="What these sites are for"></div>
+        <div class="section-title"><b>Sites</b><span class="dim" id="lDirty"></span></div>
+        <div id="lTable"></div>
+        <div class="row" style="margin-top:14px"><button class="primary" type="submit">Save changes</button>
+          <button type="button" class="danger" id="lDelete">Delete list</button></div>
+        <div id="lConfirm" hidden style="margin-top:12px" class="banner">Delete ${esc(l.name)}? ${groups.length ? `It is switched off in ${groups.length} group${groups.length === 1 ? "" : "s"}, and their kiosks lose these sites unless another list has them.` : ""}
+          <div class="row" style="margin-top:8px"><button type="button" class="danger" id="lDeleteYes">Delete</button><button type="button" id="lDeleteNo">Keep</button></div></div>
+      </form>
+      <div class="panel card"><h2>Importing a spreadsheet</h2>
+        <p class="dim" style="margin-top:0">Use a CSV or Excel file with one site per row. A column headed <span class="mono">site</span>, <span class="mono">url</span> or <span class="mono">domain</span> is used for the addresses, and one headed <span class="mono">note</span> or <span class="mono">description</span> for notes. Without headings, the column that looks most like web addresses is used.</p>
+        <p class="dim">Addresses are cleaned up on import: <span class="mono">https://www.Example.com/</span> becomes <span class="mono">example.com</span>. Duplicates are skipped, and anything that isn't a site address is listed so you can check it.</p>
+        <p class="dim" style="margin-bottom:0">You see a preview first, then choose to add the new sites or replace the whole list.</p>
+      </div>
+    </div>`;
+  siteTable.state["l-" + id] = null;
+  siteTable($("#lTable"), draft, () => ($("#lDirty").textContent = "Unsaved changes"), "l-" + id);
+  $("#lForm").onsubmit = e => {
+    e.preventDefault();
+    l.name = $("#lName").value.trim() || l.name;
+    l.description = $("#lDesc").value.trim();
+    l.sites = draft.map(x => ({ ...x }));
+    toast(groups.length ? `Saved. ${kiosks} kiosk${kiosks === 1 ? "" : "s"} update within 15 minutes.` : "Saved");
+    viewSiteList(id); renderNav("sitelist");
+  };
+  $("#lDelete").onclick = () => ($("#lConfirm").hidden = false);
+  $("#lDeleteNo").onclick = () => ($("#lConfirm").hidden = true);
+  $("#lDeleteYes").onclick = () => {
+    db.groups.forEach(g => (g.siteLists = g.siteLists.filter(x => x !== l.id)));
+    db.siteLists = db.siteLists.filter(x => x !== l);
+    toast(`Deleted ${l.name}`); location.hash = "#sitelists";
+  };
 }
 
 function viewPassword() {
@@ -420,6 +762,8 @@ function route() {
   else if (h.startsWith("device-")) viewDevice(h.slice(7));
   else if (h === "groups") viewGroups();
   else if (h.startsWith("group-")) viewGroup(h.slice(6));
+  else if (h === "sitelists") viewSiteLists();
+  else if (h.startsWith("sitelist-")) viewSiteList(h.slice(9));
   else if (h === "password") viewPassword();
   else viewDevices();
   window.scrollTo(0, 0);
