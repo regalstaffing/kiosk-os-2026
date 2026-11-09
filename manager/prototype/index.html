@@ -41,7 +41,10 @@ nav a { color: var(--muted); text-decoration: none; padding: 8px 10px; border-ra
 nav a:hover { color: var(--fg); background: var(--bg); }
 nav a.on { color: var(--accent); background: var(--accent-soft); }
 nav .count { font: 12px var(--font-data); color: var(--muted); }
-.proto { margin-top: auto; font-size: 12px; color: var(--muted); padding: 10px; border: 1px dashed var(--line); border-radius: 6px; }
+.theme { margin-top: auto; display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.theme button { flex: 1; border: 0; background: none; padding: 5px 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.theme button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: 0 0 0 1px var(--line); }
+.proto { margin-top: 10px; font-size: 12px; color: var(--muted); padding: 10px; border: 1px dashed var(--line); border-radius: 6px; }
 main { padding-block: 28px 48px; padding-left: 32px; padding-right: max(32px, env(safe-area-inset-right, 0px)); min-width: 0; }
 h1 { font-size: 24px; margin: 0; text-wrap: balance; }
 h2 { font-size: 16px; margin: 0 0 10px; }
@@ -104,6 +107,7 @@ dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
   nav { flex-direction: row; flex-wrap: wrap; align-items: center; border-right: 0; border-bottom: 1px solid var(--line); padding-block: 10px; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .brand { margin: 0 8px 0 0; width: 100%; }
   .proto { display: none; }
+  .theme { margin-top: 0; margin-left: auto; }
   main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
   .grid2 { grid-template-columns: minmax(0, 1fr); }
 }
@@ -119,6 +123,9 @@ dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
     <a href="#devices" data-nav="devices">Devices <span class="count" id="nav-devices"></span></a>
     <a href="#groups" data-nav="groups">Groups <span class="count" id="nav-groups"></span></a>
     <a href="#password" data-nav="password">Admin password</a>
+    <div class="theme" role="group" aria-label="Appearance">
+      <button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button><button type="button" data-theme-set="system">Auto</button>
+    </div>
     <div class="proto">Prototype with example devices. Changes are kept only until you reload.</div>
   </nav>
   <main id="view"></main>
@@ -417,6 +424,18 @@ function route() {
   else viewDevices();
   window.scrollTo(0, 0);
 }
+// Appearance: Light, Dark, or Auto (follows the computer's setting). Remembered on this browser.
+function setTheme(mode, save) {
+  if (mode === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", mode);
+  document.querySelectorAll("[data-theme-set]").forEach(b => b.setAttribute("aria-pressed", b.dataset.themeSet === mode));
+  if (save) try { localStorage.setItem("kiosk-manager-theme", mode); } catch (e) {}
+}
+document.querySelectorAll("[data-theme-set]").forEach(b => b.onclick = () => setTheme(b.dataset.themeSet, true));
+let savedTheme = "system";
+try { savedTheme = localStorage.getItem("kiosk-manager-theme") || "system"; } catch (e) {}
+setTheme(savedTheme, false);
+
 addEventListener("hashchange", route);
 route();
 </script>
