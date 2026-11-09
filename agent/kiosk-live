@@ -100,6 +100,8 @@ find_boot_usb() {
 usb_guard() {
     iface=$1
     case "$iface" in /sys/*) ;; *) iface=/sys$iface ;; esac
+    # Compare real paths (/sys/bus/usb/devices/... entries are links)
+    iface=$(readlink -f "$iface") || return 0
     [ -f "$BOOTUSB" ] || return 0          # too early in start-up; kiosk-live boot checks again
     boot=$(cat "$BOOTUSB")
     case "$iface" in "$boot"/*) return 0 ;; esac
@@ -108,7 +110,7 @@ usb_guard() {
 
 block_other_sticks() {
     if boot=$(find_boot_usb); then
-        echo "$boot" > "$BOOTUSB"
+        readlink -f "$boot" > "$BOOTUSB"
         log "boot stick: $boot"
     else
         # Not booted from USB (e.g. a virtual PC): block every USB stick
