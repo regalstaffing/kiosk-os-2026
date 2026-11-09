@@ -101,6 +101,7 @@ if [ "$LIVE" = 1 ]; then
     install -D -m 644 "$REPO/system/live/kiosk-setpw.service"     /etc/systemd/system/kiosk-setpw.service
     install -D -m 644 "$REPO/system/live/kiosk-live-update.service" /etc/systemd/system/kiosk-live-update.service
     install -D -m 644 "$REPO/system/live/kiosk-live-update.timer" /etc/systemd/system/kiosk-live-update.timer
+    install -D -m 644 "$REPO/system/live/kiosk-debug-serial.service" /etc/systemd/system/kiosk-debug-serial.service
     install -D -m 644 "$REPO/system/live/90-kiosk-usb-guard.rules" /etc/udev/rules.d/90-kiosk-usb-guard.rules
     echo kiosk > /etc/hostname
     # Logs stay in memory only (nothing written to the stick or the PC)
@@ -114,7 +115,7 @@ if [ "$LIVE" = 1 ]; then
     update-initramfs -u -k all
     systemctl set-default graphical.target
     systemctl enable kiosk.service kiosk-sessiond.service kiosk-config.timer \
-        kiosk-live-boot.service kiosk-setpw.service kiosk-live-update.timer
+        kiosk-live-boot.service kiosk-setpw.service kiosk-live-update.timer kiosk-debug-serial.service
     echo "Done (run-from-stick image)."
     exit 0
 fi

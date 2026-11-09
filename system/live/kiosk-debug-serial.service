@@ -1,0 +1,13 @@
+# Test builds only: when started with "kiosk.serial_debug" on the kernel command
+# line (the GitHub test boot adds it), write start-up problems to the serial port.
+[Unit]
+Description=Kiosk test boot: report problems on the serial port
+ConditionKernelCommandLine=kiosk.serial_debug
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'sleep 45; exec > /dev/ttyS0 2>&1; echo "=== FAILED UNITS"; systemctl --failed --no-pager; echo "=== JOURNAL (warnings)"; journalctl -b -p warning --no-pager | tail -150; echo "=== LOGIND"; journalctl -b -u systemd-logind -u dbus -u kiosk-setpw -u kiosk -u kiosk-live-boot --no-pager | tail -80; echo "=== END"'
+
+[Install]
+WantedBy=multi-user.target

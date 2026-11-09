@@ -22,7 +22,7 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y mmdebstrap squashfs-tools dosfstools e2fsprogs grub-pc-bin grub2-common xz-utils fdisk qemu-system-x86 ovmf socat imagemagick
+          sudo apt-get install -y mmdebstrap squashfs-tools dosfstools e2fsprogs grub-pc-bin grub2-common xz-utils fdisk qemu-system-x86 ovmf socat imagemagick mtools
       - name: Get the current Debian archive keyring
         run: docker run --rm debian:trixie cat /usr/share/keyrings/debian-archive-keyring.gpg > debian-keyring.gpg
       - name: Build
@@ -30,6 +30,11 @@ jobs:
       - name: Test boot in a virtual PC (BIOS and UEFI)
         run: |
           xz -dc out/kiosk-os-live.img.xz > test.img
+          # Test copy only: report start-up problems on the serial port
+          for d in EFI/BOOT EFI/debian boot/grub; do
+            mtype -i test.img@@1M ::/$d/grub.cfg | sed 's/panic=10/panic=10 kiosk.serial_debug/' > grub-test.cfg
+            mcopy -o -i test.img@@1M grub-test.cfg ::/$d/grub.cfg
+          done
           mkdir -p shots
           sudo chmod 666 /dev/kvm 2>/dev/null || true
           ACCEL=$( [ -e /dev/kvm ] && echo "-enable-kvm -cpu host" || echo "" )
@@ -49,6 +54,7 @@ jobs:
           done
           for f in shots/*.ppm; do convert "$f" "${f%.ppm}.png" && rm "$f"; done || true
           ls -la shots
+          for m in bios uefi; do echo "######## $m serial"; cat serial-$m.txt | tail -300; cp serial-$m.txt shots/ || true; done
       - name: Save screenshots to the ci-screens branch
         if: always()
         env:
