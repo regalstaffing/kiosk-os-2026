@@ -35,24 +35,8 @@ jobs:
             mtype -i test.img@@1M ::/$d/grub.cfg | sed 's/panic=10/panic=10 kiosk.serial_debug/' > grub-test.cfg
             mcopy -o -i test.img@@1M grub-test.cfg ::/$d/grub.cfg
           done
-          mkdir -p shots
           sudo chmod 666 /dev/kvm 2>/dev/null || true
-          ACCEL=$( [ -e /dev/kvm ] && echo "-enable-kvm -cpu host" || echo "" )
-          for mode in bios uefi; do
-            cp test.img $mode.img
-            FW=""; [ $mode = uefi ] && FW="-bios /usr/share/ovmf/OVMF.fd"
-            qemu-system-x86_64 $ACCEL -m 3072 -smp 2 $FW -drive file=$mode.img,format=raw,if=none,id=stick \
-              -device qemu-xhci -device usb-storage,drive=stick,bootindex=0 -vga std -display none \
-              -monitor unix:mon-$mode,server,nowait -serial file:serial-$mode.txt &
-            for t in 20 60 120 200; do
-              sleep $(( t - ${prev:-0} )); prev=$t
-              echo "screendump shots/$mode-${t}s.ppm" | socat - UNIX-CONNECT:mon-$mode || true
-            done
-            prev=0
-            echo quit | socat - UNIX-CONNECT:mon-$mode || true
-            wait || true
-          done
-          for f in shots/*.ppm; do convert "$f" "${f%.ppm}.png" && rm "$f"; done || true
+          for mode in bios uefi; do cp test.img $mode.img; bash live/test-boot.sh $mode.img $mode shots; done
           ls -la shots
           for m in bios uefi; do echo "######## $m serial"; cat serial-$m.txt | tail -300; cp serial-$m.txt shots/ || true; done
       - name: Save screenshots to the ci-screens branch
