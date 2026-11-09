@@ -12,8 +12,10 @@ LIVE=${KIOSK_LIVE:-0}
 echo "==> Installing packages"
 apt-get update
 # fonts-noto-core is small; the full fonts-noto set pulls in ~1 GB of CJK fonts
-apt-get install -y cage chromium fonts-noto-core fontconfig python3 kbd git \
-    python3-gi gir1.2-gtk-3.0 network-manager plymouth plymouth-themes unattended-upgrades
+# --install-recommends: the run-from-stick build turns recommended packages off
+# by default, but Wi-Fi needs them (wpasupplicant, wireless-regdb)
+apt-get install -y --install-recommends cage chromium fonts-noto-core fontconfig python3 kbd git \
+    python3-gi gir1.2-gtk-3.0 network-manager wpasupplicant plymouth plymouth-themes unattended-upgrades
 if [ "$LIVE" = 1 ]; then apt-get install -y live-boot curl grub-common; fi
 
 echo "==> Handing networking to NetworkManager"
@@ -109,6 +111,11 @@ if [ "$LIVE" = 1 ]; then
     mkdir -p /etc/systemd/journald.conf.d
     printf '[Journal]\nStorage=volatile\nRuntimeMaxUse=50M\n' > /etc/systemd/journald.conf.d/kiosk-live.conf
     : > /etc/fstab
+    # The repository copy is checked by git as root
+    chown -R root:root "$REPO"
+    # Never hang long when restarting or shutting down
+    mkdir -p /etc/systemd/system.conf.d
+    printf '[Manager]\nDefaultTimeoutStopSec=10s\n' > /etc/systemd/system.conf.d/kiosk-live.conf
     # Updates come as whole new system images, not package upgrades
     systemctl mask apt-daily.timer apt-daily-upgrade.timer
     echo "==> Building the boot files"

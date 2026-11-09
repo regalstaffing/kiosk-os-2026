@@ -134,6 +134,7 @@ class AdminWindow(Gtk.Window):
         self.stack.add_named(self.build_menu(), "menu")
         self.stack.add_named(self.build_wifi(), "wifi")
         self.stack.add_named(self.build_setpw(), "setpw")
+        self.stack.add_named(self.build_confirm(), "confirm")
         self.show_all()
         self.fullscreen()
         if first_setup:
@@ -260,13 +261,24 @@ class AdminWindow(Gtk.Window):
         threading.Thread(target=lambda: GLib.idle_add(self.status.set_text, network_status()),
                          daemon=True).start()
 
-    def confirm(self, question):
-        dlg = Gtk.MessageDialog(transient_for=self, modal=True,
-                                message_type=Gtk.MessageType.QUESTION,
-                                buttons=Gtk.ButtonsType.YES_NO, text=question)
-        answer = dlg.run()
-        dlg.destroy()
-        return answer == Gtk.ResponseType.YES
+    # Confirmation is a page of this window, not a pop-up dialog: pop-ups are
+    # unreliable on the kiosk's full-screen display.
+    def build_confirm(self):
+        box = self.page()
+        self.confirm_q = self.label("", "title")
+        box.pack_start(self.confirm_q, False, False, 0)
+        box.pack_start(self.button("Yes", self.on_confirm_yes), False, False, 0)
+        box.pack_start(self.button("No", lambda _w: self.stack.set_visible_child_name("menu")), False, False, 0)
+        return box
+
+    def confirm(self, question, action):
+        self.confirm_q.set_text(question)
+        self.confirm_action = action
+        self.stack.set_visible_child_name("confirm")
+
+    def on_confirm_yes(self, _widget):
+        self.confirm_q.set_text("Please wait…")
+        subprocess.Popen(self.confirm_action)
 
     def on_console(self, _widget):
         subprocess.run(["systemctl", "start", "getty@tty2.service"])
@@ -274,12 +286,10 @@ class AdminWindow(Gtk.Window):
         Gtk.main_quit()  # kiosk restarts on "kiosk back" or after 10 idle minutes
 
     def on_restart(self, _widget):
-        if self.confirm("Restart this computer?"):
-            subprocess.Popen(["systemctl", "reboot"])
+        self.confirm("Restart this computer?", ["systemctl", "reboot"])
 
     def on_shutdown(self, _widget):
-        if self.confirm("Shut down this computer?"):
-            subprocess.Popen(["systemctl", "poweroff"])
+        self.confirm("Shut down this computer?", ["systemctl", "poweroff"])
 
     def on_leave(self, _widget):
         back_to_kiosk()

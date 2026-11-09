@@ -27,7 +27,15 @@ sleep 30; shot 2-after-password
 sleep 60; shot 3-kiosk
 hmp system_reset
 sleep 90; shot 4-after-restart
-hmp quit
+# Clean shutdown (like pressing the power button): must finish within 60 s
+hmp system_powerdown
+for i in $(seq 60); do kill -0 $QEMU 2>/dev/null || break; sleep 1; done
+if kill -0 $QEMU 2>/dev/null; then
+    shot 5-shutdown-hung; echo "SHUTDOWN TEST ($MODE): FAILED, still running after 60 s"
+    hmp quit
+else
+    echo "SHUTDOWN TEST ($MODE): passed in ${i} s"
+fi
 wait $QEMU 2>/dev/null
 for f in "$SHOTS"/$MODE-*.ppm; do convert "$f" "${f%.ppm}.png" && rm "$f"; done
 cp serial-$MODE.txt "$SHOTS/" 2>/dev/null
