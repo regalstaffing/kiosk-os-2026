@@ -263,7 +263,8 @@ function viewDevice(id) {
   const s = status(d);
   $("#view").innerHTML = `
     <a class="back" href="#devices">← All devices</a>
-    <div class="head"><div><h1>${esc(d.name)}</h1><p class="sub"><span class="pill ${s.cls}">${s.label}</span> &nbsp;Last online ${ago(d.seen)}</p></div></div>
+    <div class="head"><div><h1>${esc(d.name)}</h1><p class="sub"><span class="pill ${s.cls}">${s.label}</span> &nbsp;Last online ${ago(d.seen)}</p></div>
+      <a class="tag" href="#group-${d.group}" style="font-size:14px;padding:6px 12px;text-decoration:none">Group: ${esc(groupById(d.group).name)} →</a></div>
     <div class="grid2">
       <div class="panel card">
         <form id="devForm">
@@ -279,6 +280,7 @@ function viewDevice(id) {
       </div>
       <div class="panel card"><h2>Device details</h2>
         <dl>
+          <dt>Group</dt><dd><a href="#group-${d.group}" style="color:var(--accent);font-weight:600">${esc(groupById(d.group).name)}</a></dd>
           <dt>Device ID</dt><dd class="mono">${d.id}</dd>
           <dt>Model</dt><dd>${esc(d.model)}</dd>
           <dt>Software</dt><dd class="mono">${d.version}${d.version !== LATEST ? ` <span class="pill warn">Update pending</span>` : ` <span class="dim">(latest)</span>`}</dd>
