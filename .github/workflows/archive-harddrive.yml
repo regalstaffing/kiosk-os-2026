@@ -1,0 +1,25 @@
+# Permanent archive of the hard-drive version (v1.0).
+# Builds an installer that installs and keeps following this branch
+# (harddrive-v1), and publishes it as the "v1.0-harddrive" release.
+name: Archive hard-drive version
+on:
+  workflow_dispatch:
+  push:
+    branches: [harddrive-v1]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y xorriso
+      - run: sh installer/build-iso.sh kiosk-os-harddrive-v1.0.iso && sha256sum kiosk-os-harddrive-v1.0.iso > kiosk-os-harddrive-v1.0.iso.sha256
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete v1.0-harddrive --yes --cleanup-tag || true
+          gh release create v1.0-harddrive kiosk-os-harddrive-v1.0.iso kiosk-os-harddrive-v1.0.iso.sha256 \
+            --title "Kiosk OS v1.0 (hard-drive version) - archived" \
+            --notes "Permanent copy of the hard-drive kiosk (Phases 1-2) as tested on the Dell. Installs to the computer's hard drive and keeps updating from the harddrive-v1 branch only. Installing ERASES the computer's disk." \
+            --target "${GITHUB_SHA}"
