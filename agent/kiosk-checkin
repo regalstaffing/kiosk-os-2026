@@ -35,7 +35,7 @@ import urllib.request
 
 ETC = os.environ.get("KIOSK_ETC", "/etc/kiosk")
 TEST = os.environ.get("KIOSK_TEST") == "1"          # don't change the system (for trying it out)
-DEFAULT_URL = "https://www.regalstaffing.com/api/kiosk-checkin"
+DEFAULT_URL = "https://kiosks.regalstaffing.com/api/checkin"
 KEY_FILE = os.path.join(ETC, "manager.key")
 SETTINGS_FILE = os.path.join(ETC, "manager.toml")    # read by kiosk-config
 PW_FILE = os.path.join(ETC, "password-changed")
