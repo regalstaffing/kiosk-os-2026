@@ -54,6 +54,7 @@ case "$1" in
         echo "End session page: $(python3 -c 'import urllib.request;print(urllib.request.urlopen("http://127.0.0.1:8099/").status)' 2>&1 | tail -1)"
         kiosk-hwid
         kiosk-config show
+        kiosk-checkin status
         [ -d /run/live/medium/live ] && kiosk-live status
         echo "Idle wipe: $(grep IDLE_MINUTES /etc/kiosk/settings)"
         echo "Last settings check: $(journalctl -u kiosk-config -u kiosk-update -n 1 --no-pager -o cat 2>/dev/null | tail -1)"

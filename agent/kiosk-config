@@ -8,6 +8,8 @@
 The group and branch are set in /etc/kiosk/group (GROUP=..., BRANCH=...).
 If the group file is missing or has a mistake, or GitHub cannot be reached,
 the kiosk keeps its last working settings (/etc/kiosk/config.toml).
+Once the kiosk manager has sent settings (/etc/kiosk/manager.toml, written by
+kiosk-checkin), those are used instead of the group file on GitHub.
 """
 import json
 import os
@@ -19,6 +21,7 @@ import tomllib
 GROUP_FILE = "/etc/kiosk/group"
 REPO_FILE = "/etc/kiosk/repo"
 LAST_GOOD = "/etc/kiosk/config.toml"
+MANAGER = "/etc/kiosk/manager.toml"
 SETTINGS = "/etc/kiosk/settings"
 POLICY = "/etc/chromium/policies/managed/kiosk.json"
 END_SESSION = "http://127.0.0.1:8099"
@@ -121,8 +124,13 @@ def git(repo, *args, timeout=60):
 
 
 def candidate_texts(repo, group, branch, fetch):
-    """Group file sources, best first: GitHub branch, last working copy, local copy."""
+    """Group file sources, best first: kiosk manager, GitHub branch, last working copy, local copy."""
     path = "groups/%s.toml" % group
+    try:
+        with open(MANAGER) as f:
+            yield "settings from the kiosk manager", f.read()
+    except FileNotFoundError:
+        pass
     if fetch:
         try:
             r = git(repo, "fetch", "--quiet", "origin",

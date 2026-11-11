@@ -1,0 +1,213 @@
+#!/usr/bin/python3
+"""Check in with the kiosk manager, then apply this kiosk's settings.
+
+  kiosk-checkin           check in, then run "kiosk-config apply --fetch" (every 15 minutes)
+  kiosk-checkin status    show the result of the last check-in
+
+The kiosk sends who it is (PC ID, model, software and browser versions) and gets
+back its group's settings. Once a kiosk has had settings from the manager, it
+keeps using them, the last ones received, whenever the manager can't be reached.
+Kiosks that have never reached the manager keep following their group file on
+GitHub.
+
+Each kiosk proves who it is with its own random key (/etc/kiosk/manager.key),
+made the first time it checks in and kept on the stick. The manager only sends
+the admin password, as a scrambled hash, after a manager has approved the kiosk.
+
+The manager address can be changed in /etc/kiosk/manager (URL=...).
+"""
+import json
+import os
+import re
+import secrets
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+
+ETC = os.environ.get("KIOSK_ETC", "/etc/kiosk")
+TEST = os.environ.get("KIOSK_TEST") == "1"          # don't change the system (for trying it out)
+DEFAULT_URL = "https://www.regalstaffing.com/api/kiosk-checkin"
+KEY_FILE = os.path.join(ETC, "manager.key")
+SETTINGS_FILE = os.path.join(ETC, "manager.toml")    # read by kiosk-config
+PW_FILE = os.path.join(ETC, "password-changed")
+STATUS_FILE = "/run/kiosk-checkin.json"
+HASH_RE = re.compile(r"^\$6\$[./0-9A-Za-z]{1,16}\$[./0-9A-Za-z]{86}$")
+
+
+def log(msg):
+    print(msg, flush=True)
+
+
+def read(path, default=""):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return default
+
+
+def write(path, text, mode=0o644):
+    """Write a file only if it changed. Returns True when it changed."""
+    if read(path, None) == text.strip():
+        return False
+    tmp = path + ".new"
+    with open(tmp, "w") as f:
+        f.write(text)
+    os.chmod(tmp, mode)
+    os.replace(tmp, path)
+    return True
+
+
+def manager_url():
+    for line in read(os.path.join(ETC, "manager")).splitlines():
+        if line.strip().startswith("URL="):
+            return line.split("=", 1)[1].strip()
+    return DEFAULT_URL
+
+
+def kiosk_key():
+    key = read(KEY_FILE)
+    if not re.fullmatch(r"[0-9a-f]{64}", key):
+        key = secrets.token_hex(32)
+        write(KEY_FILE, key + "\n", 0o600)
+    return key
+
+
+def software_version():
+    v = read(os.path.join(ETC, "version"))
+    if v:
+        return v
+    repo = read(os.path.join(ETC, "repo"), "/opt/kiosk-os")
+    r = subprocess.run(["git", "-C", repo, "rev-parse", "--short", "HEAD"], capture_output=True, text=True)
+    return r.stdout.strip()
+
+
+def chromium_version():
+    try:
+        r = subprocess.run(["chromium", "--version"], capture_output=True, text=True, timeout=20)
+        m = re.search(r"\d+(\.\d+){3}", r.stdout)
+        return m.group(0) if m else ""
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+def hardware():
+    try:
+        r = subprocess.run(["kiosk-hwid", "--json"], capture_output=True, text=True, timeout=20)
+        return json.loads(r.stdout)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return {}
+
+
+def to_toml(s):
+    """The manager's settings in the same layout as a group file, so kiosk-config can check and apply them."""
+    q = json.dumps                       # a JSON string is also a valid TOML string
+    idle = s["idle_minutes"]
+    lines = [
+        "# Settings from the kiosk manager. Written by kiosk-checkin; changes here are replaced.",
+        "home_pages = [" + ", ".join(q(h) for h in s["home_pages"]) + "]",
+        "new_tab_page = " + q(s["new_tab_page"]),
+        "",
+        "[session]",
+        "idle_minutes = %s" % (int(idle) if float(idle).is_integer() else idle),
+        "",
+        "[browser]",
+        "printing = " + ("true" if s.get("printing") else "false"),
+        "",
+        "[allow]",
+        "sites = [",
+    ] + ["    %s," % q(x) for x in s["sites"]] + ["]", ""]
+    return "\n".join(lines)
+
+
+def run(*cmd):
+    if TEST:
+        log("(test) would run: " + " ".join(cmd))
+        return 0
+    return subprocess.run(cmd).returncode
+
+
+def check_in():
+    """Returns (ok, message, changed)."""
+    hw = hardware()
+    pc_id = hw.get("pc_id", "")
+    if not pc_id:
+        return False, "no PC ID found (see kiosk-hwid)", False
+    pw_changed = read(PW_FILE)
+    body = {
+        "pc_id": pc_id,
+        "key": kiosk_key(),
+        "hwid": hw,
+        "version": software_version(),
+        "chromium": chromium_version(),
+        "stick_id": read(os.path.join(ETC, "device-id")),
+        "password_changed": int(pw_changed) if pw_changed.isdigit() else None,
+    }
+    url = manager_url()
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
+                                 headers={"Content-Type": "application/json", "User-Agent": "kiosk-checkin"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as res:
+            reply = json.load(res)
+    except urllib.error.HTTPError as e:
+        try:
+            detail = json.load(e).get("error", "")
+        except Exception:
+            detail = ""
+        return False, "manager answered %s %s" % (e.code, detail), False
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        return False, "could not reach the manager: %s" % getattr(e, "reason", e), False
+
+    changed = False
+    settings = reply.get("settings")
+    if isinstance(settings, dict):
+        try:
+            changed |= write(SETTINGS_FILE, to_toml(settings))
+        except (KeyError, TypeError, ValueError):
+            return False, "the manager sent settings this kiosk can't read", False
+
+    pw = reply.get("admin_password")
+    if isinstance(pw, dict) and HASH_RE.match(str(pw.get("hash", ""))) and str(pw.get("changed")) != pw_changed:
+        if run("usermod", "-p", pw["hash"], "root") == 0:
+            write(PW_FILE, "%s\n" % pw["changed"])
+            changed = True
+            log("admin password updated from the manager")
+
+    group = reply.get("group") or {}
+    state = "approved" if reply.get("approved") else "waiting for a manager to approve it"
+    return True, "checked in as %s, group %s, %s" % (reply.get("name", "?"), group.get("name", "?"), state), changed
+
+
+def main(argv):
+    if len(argv) > 1 and argv[1] == "status":
+        try:
+            with open(STATUS_FILE) as f:
+                s = json.load(f)
+            print("Manager check-in: %s (%s)" % (s["message"], time.strftime("%Y-%m-%d %H:%M", time.localtime(s["time"]))))
+        except (OSError, ValueError, KeyError):
+            print("Manager check-in: not yet since start-up")
+        return 0
+    if len(argv) > 1:
+        print(__doc__.strip())
+        return 2
+
+    ok, message, changed = check_in()
+    log(("manager: " if ok else "manager check-in skipped: ") + message)
+    if not TEST:
+        try:
+            with open(STATUS_FILE, "w") as f:
+                json.dump({"ok": ok, "message": message, "time": int(time.time())}, f)
+        except OSError:
+            pass
+    rc = run("/usr/local/sbin/kiosk-config", "apply", "--fetch")
+    # Keep the key, the settings and the password on the stick (kiosk-config saves only when its own files change)
+    if changed or not os.path.exists(os.path.join("/run/live/medium/kiosk-data", "manager.key")):
+        if os.path.exists("/usr/local/sbin/kiosk-live"):
+            run("/usr/local/sbin/kiosk-live", "save")
+    return rc
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

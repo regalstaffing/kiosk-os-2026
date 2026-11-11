@@ -1,8 +1,8 @@
 [Unit]
-Description=Check GitHub for kiosk group settings changes every 15 minutes
+Description=Check in with the kiosk manager (and GitHub) for settings changes every 15 minutes
 
 [Timer]
-OnBootSec=15min
+OnBootSec=2min
 OnUnitActiveSec=15min
 RandomizedDelaySec=2min
 

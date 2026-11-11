@@ -5,7 +5,7 @@
 #   kiosk-live boot            at start-up: load saved settings, block other USB sticks,
 #                              confirm a new system version started fine
 #   kiosk-live save            save settings to the stick (group, last working settings,
-#                              admin password hash, device ID)
+#                              admin password hash, device ID, kiosk manager key and settings)
 #   kiosk-live usb-guard PATH  udev: allow a USB storage interface only if it is the boot stick
 #   kiosk-live update [--now]  download a newer system image to the stick for the next start
 #                              (--now: then restart)
@@ -18,7 +18,7 @@ BOOTUSB=/run/kiosk-boot-usb        # sysfs path of the boot stick
 EFI=/run/kiosk-efi                 # boot partition, mounted only while changing boot settings
 LOCK=/run/kiosk-live.lock
 RELEASE=https://github.com/regalstaffing/kiosk-os-2026/releases/download/live-latest
-SAVED="group config.toml settings device-id root.hash"
+SAVED="group config.toml settings device-id root.hash manager.key manager.toml password-changed"
 
 log() { echo "kiosk-live: $*"; }
 
@@ -60,7 +60,7 @@ do_save() {
             cp "/etc/kiosk/$f" "$DATA/$f.new" && mv "$DATA/$f.new" "$DATA/$f"
         fi
     done
-    chmod 600 "$DATA/root.hash" 2>/dev/null
+    chmod 600 "$DATA/root.hash" "$DATA/manager.key" 2>/dev/null
     return 0
 }
 
