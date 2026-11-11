@@ -33,7 +33,7 @@ KEY_FILE = os.path.join(ETC, "manager.key")
 SETTINGS_FILE = os.path.join(ETC, "manager.toml")    # read by kiosk-config
 PW_FILE = os.path.join(ETC, "password-changed")
 STATUS_FILE = "/run/kiosk-checkin.json"
-HASH_RE = re.compile(r"^\$6\$[./0-9A-Za-z]{1,16}\$[./0-9A-Za-z]{86}$")
+HASH_RE = re.compile(r"^\$6\$(rounds=\d{4,9}\$)?[./0-9A-Za-z]{1,16}\$[./0-9A-Za-z]{86}$")
 
 
 def log(msg):
