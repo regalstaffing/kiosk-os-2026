@@ -6,7 +6,7 @@ ConditionPathExists=/etc/kiosk/repo
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/kiosk-checkin
+ExecStart=/usr/local/sbin/kiosk-checkin start-up
 StandardOutput=journal
 StandardError=journal
 TimeoutStartSec=2min

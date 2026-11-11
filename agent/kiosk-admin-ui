@@ -249,6 +249,7 @@ class AdminWindow(Gtk.Window):
         self.status = self.label("", "status")
         box.pack_start(self.status, False, False, 0)
         box.pack_start(self.button("Wi-Fi", self.on_wifi), False, False, 0)
+        box.pack_start(self.button("Check for settings now", self.on_check_now), False, False, 0)
         box.pack_start(self.button("Text console", self.on_console), False, False, 0)
         box.pack_start(self.button("Change admin password", self.on_change_pw), False, False, 0)
         box.pack_start(self.button("Restart", self.on_restart), False, False, 0)
@@ -279,6 +280,16 @@ class AdminWindow(Gtk.Window):
     def on_confirm_yes(self, _widget):
         self.confirm_q.set_text("Please wait…")
         subprocess.Popen(self.confirm_action)
+
+    def on_check_now(self, _widget):
+        """Check in with the kiosk manager now, instead of waiting for the next start-up."""
+        self.status.set_text("Checking for settings…")
+
+        def work():
+            run("/usr/local/sbin/kiosk-checkin")
+            msg = run("/usr/local/sbin/kiosk-checkin", "status")[1].replace("Manager check-in: ", "")
+            GLib.idle_add(self.status.set_text, msg + "\nNew settings are used when you go back to the kiosk.")
+        threading.Thread(target=work, daemon=True).start()
 
     def on_console(self, _widget):
         subprocess.run(["systemctl", "start", "getty@tty2.service"])

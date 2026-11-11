@@ -42,9 +42,10 @@ Only the stick the kiosk started from is allowed. Any other USB stick is blocked
 
 ## Kiosk manager
 
-Every 15 minutes, and 2 minutes after start-up, the kiosk checks in with the kiosk manager at www.regalstaffing.com/kiosks. It sends who it is: its PC ID, model, software and browser versions, and stick ID. In return it gets its group's settings.
+Once each time it starts up, the kiosk checks in with the kiosk manager at www.regalstaffing.com/kiosks. (If the network isn't up yet, for example because the Wi-Fi password still has to be typed in, it tries again every 5 minutes until the manager answers.) It sends who it is: its PC ID, model, software and browser versions, and stick ID. In return it gets its group's settings.
 
 - **A new kiosk** shows up in the manager as *New* and keeps the default settings. A manager approves it by saving it on its page or by moving it into a group. Only approved kiosks receive the admin password, and they get it only in its scrambled form.
 - **Its key.** The first time a kiosk checks in, it makes its own random key (`/etc/kiosk/manager.key`). The key is kept on the stick, and the manager won't accept that PC with any other key. If a stick is replaced or re-made, use *Forget device* in the manager so the PC can register again.
 - **When the manager can't be reached.** A kiosk that has had settings from the manager keeps using the last ones it received. A kiosk that has never reached the manager follows its group file on GitHub, as before.
+- **Getting changes.** Changes made in the manager reach a kiosk the next time it starts up. To get them right away, open the admin menu (Ctrl+Alt+Shift+A) and press *Check for settings now*. Kiosks check in only at start-up to keep the manager's database use low.
 - **Troubleshooting.** `kiosk check` shows the last check-in. `sudo kiosk-checkin` checks in right away.

@@ -1,10 +1,12 @@
 [Unit]
-Description=Check in with the kiosk manager (and GitHub) for settings changes every 15 minutes
+Description=Check in with the kiosk manager (and GitHub) once after start-up
+# Fires every 5 minutes, but "kiosk-checkin start-up" stops doing anything once the manager
+# has answered, so each kiosk checks in about once per start-up (and late Wi-Fi still works).
 
 [Timer]
-OnBootSec=2min
-OnUnitActiveSec=15min
-RandomizedDelaySec=2min
+OnBootSec=1min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
 
 [Install]
 WantedBy=timers.target

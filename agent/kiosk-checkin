@@ -1,8 +1,15 @@
 #!/usr/bin/python3
 """Check in with the kiosk manager, then apply this kiosk's settings.
 
-  kiosk-checkin           check in, then run "kiosk-config apply --fetch" (every 15 minutes)
+  kiosk-checkin           check in now, then run "kiosk-config apply --fetch"
+  kiosk-checkin start-up  the same, but only until the manager has answered once since start-up
+                          (kiosk-config.timer runs this every 5 minutes, so a kiosk whose Wi-Fi is
+                          typed in later still checks in; after that it does nothing until restart)
   kiosk-checkin status    show the result of the last check-in
+
+Kiosks check in only at start-up, to keep the manager's database use low. Changes
+made in the manager reach a kiosk when it restarts, or when someone presses
+"Check for settings now" in the admin menu.
 
 The kiosk sends who it is (PC ID, model, software and browser versions) and gets
 back its group's settings. Once a kiosk has had settings from the manager, it
@@ -129,12 +136,20 @@ def run(*cmd):
     return subprocess.run(cmd).returncode
 
 
+def answered_since_start_up():
+    try:
+        with open(STATUS_FILE) as f:
+            return bool(json.load(f).get("answered"))
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def check_in():
-    """Returns (ok, message, changed)."""
+    """Returns (ok, message, changed, answered). answered: the manager replied, even with an error."""
     hw = hardware()
     pc_id = hw.get("pc_id", "")
     if not pc_id:
-        return False, "no PC ID found (see kiosk-hwid)", False
+        return False, "no PC ID found (see kiosk-hwid)", False, False
     pw_changed = read(PW_FILE)
     body = {
         "pc_id": pc_id,
@@ -156,9 +171,9 @@ def check_in():
             detail = json.load(e).get("error", "")
         except Exception:
             detail = ""
-        return False, "manager answered %s %s" % (e.code, detail), False
+        return False, "manager answered %s %s" % (e.code, detail), False, e.code < 500
     except (urllib.error.URLError, OSError, ValueError) as e:
-        return False, "could not reach the manager: %s" % getattr(e, "reason", e), False
+        return False, "could not reach the manager: %s" % getattr(e, "reason", e), False, False
 
     changed = False
     settings = reply.get("settings")
@@ -166,7 +181,7 @@ def check_in():
         try:
             changed |= write(SETTINGS_FILE, to_toml(settings))
         except (KeyError, TypeError, ValueError):
-            return False, "the manager sent settings this kiosk can't read", False
+            return False, "the manager sent settings this kiosk can't read", False, True
 
     pw = reply.get("admin_password")
     if isinstance(pw, dict) and HASH_RE.match(str(pw.get("hash", ""))) and str(pw.get("changed")) != pw_changed:
@@ -177,7 +192,7 @@ def check_in():
 
     group = reply.get("group") or {}
     state = "approved" if reply.get("approved") else "waiting for a manager to approve it"
-    return True, "checked in as %s, group %s, %s" % (reply.get("name", "?"), group.get("name", "?"), state), changed
+    return True, "checked in as %s, group %s, %s" % (reply.get("name", "?"), group.get("name", "?"), state), changed, True
 
 
 def main(argv):
@@ -189,16 +204,19 @@ def main(argv):
         except (OSError, ValueError, KeyError):
             print("Manager check-in: not yet since start-up")
         return 0
-    if len(argv) > 1:
+    start_up = len(argv) > 1 and argv[1] == "start-up"
+    if len(argv) > 1 and not start_up:
         print(__doc__.strip())
         return 2
+    if start_up and answered_since_start_up():
+        return 0                         # already checked in since start-up
 
-    ok, message, changed = check_in()
+    ok, message, changed, answered = check_in()
     log(("manager: " if ok else "manager check-in skipped: ") + message)
     if not TEST:
         try:
             with open(STATUS_FILE, "w") as f:
-                json.dump({"ok": ok, "message": message, "time": int(time.time())}, f)
+                json.dump({"ok": ok, "answered": answered, "message": message, "time": int(time.time())}, f)
         except OSError:
             pass
     rc = run("/usr/local/sbin/kiosk-config", "apply", "--fetch")

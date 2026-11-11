@@ -28,8 +28,9 @@ Site examples: `"example.com"` allows the whole site and its subdomains.
    A red X means it has a mistake; open the check to see which line.
    Kiosks ignore a file with mistakes and keep their last working settings.
 
-Kiosks check for changes every 15 minutes and at every start-up. A newly allowed
-site works right away; home page changes show at the next session.
+Kiosks check for changes once at every start-up. To get a change on a kiosk right
+away, press *Check for settings now* in its admin menu (Ctrl+Alt+Shift+A); the new
+settings are used when the kiosk session starts again.
 
 ## Adding a group
 
