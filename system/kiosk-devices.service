@@ -1,0 +1,15 @@
+[Unit]
+Description=Kiosk: put back the saved sound, microphone, camera and brightness choices
+# After kiosk-live-boot has copied /etc/kiosk/devices.json from the stick
+After=kiosk-live-boot.service systemd-udevd.service sound.target systemd-backlight.service
+Before=kiosk.service
+
+[Service]
+Type=oneshot
+Environment=KIOSK_DEVICES_NO_GUI=1
+# Give sound cards and cameras a moment to appear
+ExecStartPre=-/usr/bin/udevadm settle --timeout=15
+ExecStart=/usr/bin/python3 /usr/local/lib/kiosk/kiosk_devices.py restore
+
+[Install]
+WantedBy=multi-user.target

@@ -52,13 +52,16 @@ jobs:
         with:
           name: boot-screenshots
           path: shots/
-      - name: Publish as the "live-latest" release
+      # usb-live publishes "live-latest", which kiosks update themselves from. Any other branch
+      # publishes "live-test" instead: a stick to try by hand, never sent to kiosks.
+      - name: Publish as the "live-latest" release (or "live-test" for other branches)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete live-latest --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
-          gh release create live-latest -R "$GITHUB_REPOSITORY" --prerelease \
-            --title "Kiosk OS run-from-stick image (testing) $(cat out/version)" \
+          if [ "$GITHUB_REF" = refs/heads/usb-live ]; then TAG=live-latest; KIND=testing; else TAG=live-test; KIND="TEST BUILD of ${GITHUB_REF_NAME}, not sent to kiosks"; fi
+          gh release delete "$TAG" --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create "$TAG" -R "$GITHUB_REPOSITORY" --prerelease \
+            --title "Kiosk OS run-from-stick image ($KIND) $(cat out/version)" \
             --notes "Write kiosk-os-live.img.xz to a USB stick (8 GB or larger) with balenaEtcher or Rufus, then boot the PC from the stick. Nothing is written to the PC's own drive. The other files are used by kiosks to update themselves. Built from ${GITHUB_SHA}." \
             --target "${GITHUB_SHA}" \
             out/kiosk-os-live.img.xz out/kiosk-os-live.img.xz.sha256 \

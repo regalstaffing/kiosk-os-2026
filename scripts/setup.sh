@@ -17,6 +17,10 @@ apt-get update
 apt-get install -y --install-recommends cage chromium fonts-noto-core fontconfig python3 kbd git \
     python3-gi gir1.2-gtk-3.0 network-manager wpasupplicant plymouth plymouth-themes unattended-upgrades
 if [ "$LIVE" = 1 ]; then apt-get install -y live-boot curl grub-common; fi
+# Admin screen device settings: sound and microphone (ALSA tools), camera preview
+apt-get install -y alsa-utils gir1.2-gstreamer-1.0 gstreamer1.0-plugins-good gstreamer1.0-gtk3
+# Sound firmware for newer Intel computers; needs the non-free-firmware archive
+apt-get install -y firmware-sof-signed || echo "firmware-sof-signed not installed; newer Intel sound may not work"
 
 echo "==> Handing networking to NetworkManager"
 # NetworkManager connects any wired port automatically and lets the admin
@@ -52,6 +56,8 @@ install -D -m 755 "$REPO/agent/kiosk-sessiond"         /usr/local/sbin/kiosk-ses
 install -D -m 755 "$REPO/agent/kiosk"                  /usr/local/sbin/kiosk
 install -D -m 755 "$REPO/agent/kiosk-admin-ui"         /usr/local/sbin/kiosk-admin-ui
 install -D -m 755 "$REPO/agent/kiosk-hwid"            /usr/local/sbin/kiosk-hwid
+install -D -m 644 "$REPO/agent/kiosk_devices.py"       /usr/local/lib/kiosk/kiosk_devices.py
+install -D -m 644 "$REPO/system/kiosk-devices.service"  /etc/systemd/system/kiosk-devices.service
 install -D -m 755 "$REPO/agent/kiosk-config"          /usr/local/sbin/kiosk-config
 install -D -m 755 "$REPO/agent/kiosk-checkin"         /usr/local/sbin/kiosk-checkin
 install -D -m 644 "$REPO/system/kiosk-config.service"  /etc/systemd/system/kiosk-config.service
@@ -123,7 +129,7 @@ if [ "$LIVE" = 1 ]; then
     echo "==> Building the boot files"
     update-initramfs -u -k all
     systemctl set-default graphical.target
-    systemctl enable kiosk.service kiosk-sessiond.service kiosk-config.timer \
+    systemctl enable kiosk.service kiosk-sessiond.service kiosk-config.timer kiosk-devices.service \
         kiosk-live-boot.service kiosk-setpw.service kiosk-live-update.timer kiosk-debug-serial.service
     echo "Done (run-from-stick image)."
     exit 0
@@ -135,7 +141,7 @@ update-grub
 
 systemctl daemon-reload
 systemctl set-default graphical.target
-systemctl enable kiosk.service kiosk-sessiond.service kiosk-update.service kiosk-config.timer
+systemctl enable kiosk.service kiosk-sessiond.service kiosk-update.service kiosk-config.timer kiosk-devices.service
 
 echo
 echo "Done. Type 'reboot' and press Enter to start the kiosk."
