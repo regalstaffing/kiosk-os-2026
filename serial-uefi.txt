@@ -1,0 +1,91 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU QEMU USB HARDDRIVE 1-0000:00:04.0-1" from PciRoot(0x0)/Pci(0x4,0x0)/USB(0x0,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU QEMU USB HARDDRIVE 1-0000:00:04.0-1" from PciRoot(0x0)/Pci(0x4,0x0)/USB(0x0,0x0)
+[0m[30m[40m[2J[01;01H[0m[37m[40m[02;35HGNU GRUB  version 2.12-9+deb13u2
+
+[04;02H┌────────────────────────────────────────────────────────────────────────────────────────────────┐[05;02H│[05;99H│[06;02H│[06;99H│[07;02H│[07;99H│[08;02H│[08;99H│[09;02H│[09;99H│[10;02H│[10;99H│[11;02H│[11;99H│[12;02H│[12;99H│[13;02H│[13;99H│[14;02H│[14;99H│[15;02H│[15;99H│[16;02H│[16;99H│[17;02H│[17;99H│[18;02H│[18;99H│[19;02H│[19;99H│[20;02H│[20;99H│[21;02H│[21;99H│[22;02H│[22;99H│[23;02H│[23;99H│[24;02H└────────────────────────────────────────────────────────────────────────────────────────────────┘[25;02H[26;02H     Use the ▲ and ▼ keys to select which entry is highlighted.                              
+      Press enter to boot the selected OS, `e' to edit the commands before booting or `c' for 
+      a command-line.                                                                         [05;:0H [0m[30m[47m[05;03H*Kiosk                                                                                          [0m[37m[40m[05;98H[06;03H Kiosk (previous version)                                                                       [06;98H[07;03H                                                                                                [07;98H[08;03H                                                                                                [08;98H[09;03H                                                                                                [09;98H[10;03H                                                                                                [10;98H[11;03H                                                                                                [11;98H[12;03H                                                                                                [12;98H[13;03H                                                                                                [13;98H[14;03H                                                                                                [14;98H[15;03H                                                                                                [15;98H[16;03H                                                                                                [16;98H[17;03H                                                                                                [17;98H[18;03H                                                                                                [18;98H[19;03H                                                                                                [19;98H[20;03H                                                                                                [20;98H[21;03H                                                                                                [21;98H[22;03H                                                                                                [22;98H[23;03H                                                                                                [23;98H[23;:0H [05;98H[29;01H   The highlighted entry will be executed automatically in 3s.                                     [05;98H[29;01H   The highlighted entry will be executed automatically in 2s.                                     [05;98H[29;01H   The highlighted entry will be executed automatically in 1s.                                     [05;98H[29;01H   The highlighted entry will be executed automatically in 0s.                                     [05;98H[0m[30m[40m[2J[01;01H[0m[37m[40m[0m[30m[40m[2J[01;01H[0m[37m[40m  Booting `Kiosk'
+
+=== FAILED UNITS
+  UNIT LOAD ACTIVE SUB DESCRIPTION
+
+0 loaded units listed.
+=== JOURNAL (warnings)
+Nov 13 17:09:54 kiosk kernel: RETBleed: WARNING: Spectre v2 mitigation leaves CPU vulnerable to RETBleed attacks, data leaks possible!
+Nov 13 17:09:54 kiosk kernel: acpi PNP0A03:00: fail to add MMCONFIG information, can't access extended configuration space under this bridge
+Nov 13 17:09:55 kiosk systemd-udevd[475]: /usr/lib/udev/rules.d/90-alsa-restore.rules:18 GOTO="alsa_restore_std" has no matching label, ignoring.
+Nov 13 17:09:55 kiosk systemd-udevd[475]: /usr/lib/udev/rules.d/90-alsa-restore.rules:18 The line has no effect any more, dropping.
+Nov 13 17:09:55 kiosk systemd-udevd[475]: /usr/lib/udev/rules.d/90-alsa-restore.rules:22 GOTO="alsa_restore_std" has no matching label, ignoring.
+Nov 13 17:09:55 kiosk systemd-udevd[475]: /usr/lib/udev/rules.d/90-alsa-restore.rules:22 The line has no effect any more, dropping.
+=== LOGIND
+Nov 13 17:09:55 kiosk systemd[1]: Starting kiosk-live-boot.service - Kiosk (run from stick): load saved settings and block other USB sticks...
+Nov 13 17:09:57 kiosk kiosk-live[536]: kiosk-live: settings saved to the stick
+Nov 13 17:09:57 kiosk kiosk-live[536]: kiosk-live: boot stick: /sys/devices/pci0000:00/0000:00:04.0/usb2/2-1
+Nov 13 17:09:57 kiosk systemd[1]: Finished kiosk-live-boot.service - Kiosk (run from stick): load saved settings and block other USB sticks.
+Nov 13 17:09:59 kiosk systemd[1]: Starting dbus.service - D-Bus System Message Bus...
+Nov 13 17:09:59 kiosk systemd[1]: Starting systemd-logind.service - User Login Management...
+Nov 13 17:09:59 kiosk systemd[1]: Started dbus.service - D-Bus System Message Bus.
+Nov 13 17:10:00 kiosk systemd-logind[953]: New seat seat0.
+Nov 13 17:10:00 kiosk systemd-logind[953]: Watching system buttons on /dev/input/event1 (Power Button)
+Nov 13 17:10:00 kiosk systemd-logind[953]: Watching system buttons on /dev/input/event0 (AT Translated Set 2 keyboard)
+Nov 13 17:10:00 kiosk systemd[1]: Started systemd-logind.service - User Login Management.
+Nov 13 17:10:00 kiosk dbus-daemon[946]: [system] Activating via systemd: service name='org.freedesktop.hostname1' unit='dbus-org.freedesktop.hostname1.service' requested by ':1.5' (uid=0 pid=962 comm="/usr/sbin/NetworkManager --no-daemon")
+Nov 13 17:10:00 kiosk dbus-daemon[946]: [system] Successfully activated service 'org.freedesktop.hostname1'
+Nov 13 17:10:00 kiosk dbus-daemon[946]: [system] Activating via systemd: service name='org.freedesktop.nm_dispatcher' unit='dbus-org.freedesktop.nm-dispatcher.service' requested by ':1.5' (uid=0 pid=962 comm="/usr/sbin/NetworkManager --no-daemon")
+Nov 13 17:10:00 kiosk dbus-daemon[946]: [system] Successfully activated service 'org.freedesktop.nm_dispatcher'
+Nov 13 17:10:00 kiosk systemd[1]: Starting kiosk-setpw.service - Kiosk (run from stick): set the admin password on first start...
+Nov 13 17:10:00 kiosk (cage)[1003]: pam_unix(login:session): session opened for user root(uid=0) by root(uid=0)
+Nov 13 17:10:00 kiosk systemd-logind[953]: New session 1 of user root.
+Nov 13 17:10:00 kiosk systemd-logind[953]: New session 2 of user root.
+=== HWID
+PC: QEMU Ubuntu 24.04 PC v2 (i440FX + PIIX, arch_caps fix, 1996)
+PC ID: mac:52:54:00:12:34:56  (from network card address)
+Network card ens3: 52:54:00:12:34:56 (wired)
+=== END
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU QEMU USB HARDDRIVE 1-0000:00:04.0-1" from PciRoot(0x0)/Pci(0x4,0x0)/USB(0x0,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU QEMU USB HARDDRIVE 1-0000:00:04.0-1" from PciRoot(0x0)/Pci(0x4,0x0)/USB(0x0,0x0)
+[0m[30m[40m[2J[01;01H[0m[37m[40m[02;35HGNU GRUB  version 2.12-9+deb13u2
+
+[04;02H┌────────────────────────────────────────────────────────────────────────────────────────────────┐[05;02H│[05;99H│[06;02H│[06;99H│[07;02H│[07;99H│[08;02H│[08;99H│[09;02H│[09;99H│[10;02H│[10;99H│[11;02H│[11;99H│[12;02H│[12;99H│[13;02H│[13;99H│[14;02H│[14;99H│[15;02H│[15;99H│[16;02H│[16;99H│[17;02H│[17;99H│[18;02H│[18;99H│[19;02H│[19;99H│[20;02H│[20;99H│[21;02H│[21;99H│[22;02H│[22;99H│[23;02H│[23;99H│[24;02H└────────────────────────────────────────────────────────────────────────────────────────────────┘[25;02H[26;02H     Use the ▲ and ▼ keys to select which entry is highlighted.                              
+      Press enter to boot the selected OS, `e' to edit the commands before booting or `c' for 
+      a command-line.                                                                         [05;:0H [0m[30m[47m[05;03H*Kiosk                                                                                          [0m[37m[40m[05;98H[06;03H Kiosk (previous version)                                                                       [06;98H[07;03H                                                                                                [07;98H[08;03H                                                                                                [08;98H[09;03H                                                                                                [09;98H[10;03H                                                                                                [10;98H[11;03H                                                                                                [11;98H[12;03H                                                                                                [12;98H[13;03H                                                                                                [13;98H[14;03H                                                                                                [14;98H[15;03H                                                                                                [15;98H[16;03H                                                                                                [16;98H[17;03H                                                                                                [17;98H[18;03H                                                                                                [18;98H[19;03H                                                                                                [19;98H[20;03H                                                                                                [20;98H[21;03H                                                                                                [21;98H[22;03H                                                                                                [22;98H[23;03H                                                                                                [23;98H[23;:0H [05;98H[29;01H   The highlighted entry will be executed automatically in 3s.                                     [05;98H[29;01H   The highlighted entry will be executed automatically in 2s.                                     [05;98H[29;01H   The highlighted entry will be executed automatically in 1s.                                     [05;98H[29;01H   The highlighted entry will be executed automatically in 0s.                                     [05;98H[0m[30m[40m[2J[01;01H[0m[37m[40m[0m[30m[40m[2J[01;01H[0m[37m[40m  Booting `Kiosk'
+
+=== FAILED UNITS
+  UNIT LOAD ACTIVE SUB DESCRIPTION
+
+0 loaded units listed.
+=== JOURNAL (warnings)
+Nov 13 17:12:27 kiosk kernel: RETBleed: WARNING: Spectre v2 mitigation leaves CPU vulnerable to RETBleed attacks, data leaks possible!
+Nov 13 17:12:27 kiosk kernel: acpi PNP0A03:00: fail to add MMCONFIG information, can't access extended configuration space under this bridge
+Nov 13 17:12:28 kiosk systemd-udevd[470]: /usr/lib/udev/rules.d/90-alsa-restore.rules:18 GOTO="alsa_restore_std" has no matching label, ignoring.
+Nov 13 17:12:28 kiosk systemd-udevd[470]: /usr/lib/udev/rules.d/90-alsa-restore.rules:18 The line has no effect any more, dropping.
+Nov 13 17:12:28 kiosk systemd-udevd[470]: /usr/lib/udev/rules.d/90-alsa-restore.rules:22 GOTO="alsa_restore_std" has no matching label, ignoring.
+Nov 13 17:12:28 kiosk systemd-udevd[470]: /usr/lib/udev/rules.d/90-alsa-restore.rules:22 The line has no effect any more, dropping.
+=== LOGIND
+Nov 13 17:12:28 kiosk systemd[1]: Starting kiosk-live-boot.service - Kiosk (run from stick): load saved settings and block other USB sticks...
+Nov 13 17:12:29 kiosk usermod[570]: change user 'root' password
+Nov 13 17:12:29 kiosk kiosk-live[531]: kiosk-live: boot stick: /sys/devices/pci0000:00/0000:00:04.0/usb2/2-1
+Nov 13 17:12:29 kiosk systemd[1]: Finished kiosk-live-boot.service - Kiosk (run from stick): load saved settings and block other USB sticks.
+Nov 13 17:12:31 kiosk systemd[1]: Starting dbus.service - D-Bus System Message Bus...
+Nov 13 17:12:31 kiosk systemd[1]: Starting systemd-logind.service - User Login Management...
+Nov 13 17:12:31 kiosk systemd[1]: Started dbus.service - D-Bus System Message Bus.
+Nov 13 17:12:31 kiosk systemd-logind[939]: New seat seat0.
+Nov 13 17:12:31 kiosk systemd-logind[939]: Watching system buttons on /dev/input/event1 (Power Button)
+Nov 13 17:12:31 kiosk systemd-logind[939]: Watching system buttons on /dev/input/event0 (AT Translated Set 2 keyboard)
+Nov 13 17:12:31 kiosk systemd[1]: Started systemd-logind.service - User Login Management.
+Nov 13 17:12:32 kiosk dbus-daemon[932]: [system] Activating via systemd: service name='org.freedesktop.hostname1' unit='dbus-org.freedesktop.hostname1.service' requested by ':1.5' (uid=0 pid=948 comm="/usr/sbin/NetworkManager --no-daemon")
+Nov 13 17:12:32 kiosk dbus-daemon[932]: [system] Successfully activated service 'org.freedesktop.hostname1'
+Nov 13 17:12:32 kiosk dbus-daemon[932]: [system] Activating via systemd: service name='org.freedesktop.nm_dispatcher' unit='dbus-org.freedesktop.nm-dispatcher.service' requested by ':1.5' (uid=0 pid=948 comm="/usr/sbin/NetworkManager --no-daemon")
+Nov 13 17:12:32 kiosk dbus-daemon[932]: [system] Successfully activated service 'org.freedesktop.nm_dispatcher'
+Nov 13 17:12:32 kiosk systemd[1]: kiosk-setpw.service - Kiosk (run from stick): set the admin password on first start skipped, unmet condition check ConditionPathExists=/run/kiosk-need-password
+Nov 13 17:12:32 kiosk systemd[1]: Started kiosk.service - Kiosk browser (cage + Chromium).
+Nov 13 17:12:32 kiosk (cage)[988]: pam_unix(login:session): session opened for user kiosk(uid=1000) by kiosk(uid=0)
+Nov 13 17:12:32 kiosk systemd-logind[939]: New session 1 of user kiosk.
+Nov 13 17:12:32 kiosk systemd-logind[939]: New session 2 of user kiosk.
+Nov 13 17:12:41 kiosk dbus-daemon[932]: [system] Activating via systemd: service name='org.freedesktop.UPower' unit='upower.service' requested by ':1.15' (uid=1000 pid=1014 comm="/usr/lib/chromium/chromium --show-component-extens")
+Nov 13 17:12:41 kiosk dbus-daemon[932]: [system] Successfully activated service 'org.freedesktop.UPower'
+=== HWID
+PC: QEMU Ubuntu 24.04 PC v2 (i440FX + PIIX, arch_caps fix, 1996)
+PC ID: mac:52:54:00:12:34:56  (from network card address)
+Network card ens3: 52:54:00:12:34:56 (wired)
+=== END
