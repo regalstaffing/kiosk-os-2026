@@ -12,6 +12,10 @@ apt-get update
 # fonts-noto-core is small; the full fonts-noto set pulls in ~1 GB of CJK fonts
 apt-get install -y cage chromium fonts-noto-core fontconfig python3 kbd git \
     python3-gi gir1.2-gtk-3.0 network-manager plymouth plymouth-themes unattended-upgrades
+# Admin screen device settings: sound and microphone (ALSA tools), camera preview
+apt-get install -y alsa-utils gir1.2-gstreamer-1.0 gstreamer1.0-plugins-good gstreamer1.0-gtk3
+# Sound firmware for newer Intel computers; needs the non-free-firmware archive
+apt-get install -y firmware-sof-signed || echo "firmware-sof-signed not installed; newer Intel sound may not work"
 
 echo "==> Handing networking to NetworkManager"
 # NetworkManager connects any wired port automatically and lets the admin
@@ -40,6 +44,7 @@ install -D -m 644 "$REPO/system/kiosk-sessiond.service" /etc/systemd/system/kios
 install -D -m 755 "$REPO/agent/kiosk-sessiond"         /usr/local/sbin/kiosk-sessiond
 install -D -m 755 "$REPO/agent/kiosk"                  /usr/local/sbin/kiosk
 install -D -m 755 "$REPO/agent/kiosk-admin-ui"         /usr/local/sbin/kiosk-admin-ui
+install -D -m 644 "$REPO/agent/kiosk_devices.py"       /usr/local/lib/kiosk/kiosk_devices.py
 install -D -m 755 "$REPO/agent/kiosk-config"          /usr/local/sbin/kiosk-config
 install -D -m 644 "$REPO/system/kiosk-config.service"  /etc/systemd/system/kiosk-config.service
 install -D -m 644 "$REPO/system/kiosk-config.timer"    /etc/systemd/system/kiosk-config.timer
