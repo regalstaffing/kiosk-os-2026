@@ -26,7 +26,10 @@ jobs:
       - name: Get the current Debian archive keyring
         run: docker run --rm debian:trixie cat /usr/share/keyrings/debian-archive-keyring.gpg > debian-keyring.gpg
       - name: Build
-        run: sudo sh live/build-live.sh out "$PWD/debian-keyring.gpg"
+        # Test builds (any branch but usb-live) update themselves from live-test, never live-latest
+        run: |
+          CHANNEL=live-test; [ "$GITHUB_REF" = refs/heads/usb-live ] && CHANNEL=live-latest
+          sudo KIOSK_CHANNEL=$CHANNEL sh live/build-live.sh out "$PWD/debian-keyring.gpg"
       - name: Test boot in a virtual PC (BIOS and UEFI)
         run: |
           xz -dc out/kiosk-os-live.img.xz > test.img

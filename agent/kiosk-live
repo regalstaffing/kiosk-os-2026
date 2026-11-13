@@ -18,7 +18,10 @@ DATA=$MEDIUM/kiosk-data            # saved settings
 BOOTUSB=/run/kiosk-boot-usb        # sysfs path of the boot stick
 EFI=/run/kiosk-efi                 # boot partition, mounted only while changing boot settings
 LOCK=/run/kiosk-live.lock
-RELEASE=https://github.com/regalstaffing/kiosk-os-2026/releases/download/live-latest
+# Updates come from live-latest; a test build (see build-live.sh) has "live-test" in /etc/kiosk/channel
+CHANNEL=$(cat /etc/kiosk/channel 2>/dev/null)
+case "$CHANNEL" in live-latest|live-test) ;; *) CHANNEL=live-latest;; esac
+RELEASE=https://github.com/regalstaffing/kiosk-os-2026/releases/download/$CHANNEL
 # devices.json: sound, microphone, camera and brightness choices as plain values. Never config
 # files: kiosk-devices.service checks the values and writes the config itself (see kiosk_devices.py).
 SAVED="group config.toml settings device-id root.hash manager.key manager.toml password-changed devices.json"

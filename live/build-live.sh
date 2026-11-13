@@ -13,6 +13,9 @@ KEYRING=${2:-}
 WORK=$(mktemp -d)
 ROOT=$WORK/rootfs
 VERSION=$(date -u +%Y%m%d-%H%M)-$(git -C "$REPO" rev-parse --short HEAD)
+# The release this stick updates itself from: live-latest, or live-test for a test build
+CHANNEL=${KIOSK_CHANNEL:-live-latest}
+case "$CHANNEL" in live-latest|live-test) ;; *) echo "KIOSK_CHANNEL must be live-latest or live-test" >&2; exit 1;; esac
 IMG_MB=3600           # fits "4 GB" sticks; 8 GB or larger recommended
 
 FIRMWARE=firmware-linux-free,firmware-misc-nonfree,firmware-iwlwifi,firmware-realtek,firmware-atheros,firmware-brcm80211,firmware-intel-graphics,firmware-amd-graphics,firmware-intel-sound
@@ -30,6 +33,7 @@ mmdebstrap --mode=root --variant=important \
     --customize-hook="sync-in $REPO /opt/kiosk-os" \
     --customize-hook="chroot \"\$1\" env KIOSK_LIVE=1 DEBIAN_FRONTEND=noninteractive sh /opt/kiosk-os/scripts/setup.sh" \
     --customize-hook="echo '$VERSION' > \"\$1/etc/kiosk/version\"" \
+    --customize-hook="echo '$CHANNEL' > \"\$1/etc/kiosk/channel\"" \
     --customize-hook='chroot "$1" sh -c "mkdir -p /root/debs && cd /root/debs && apt-get download shim-signed grub-efi-amd64-signed"' \
     --customize-hook="sync-out /root/debs $WORK/debs" \
     --customize-hook='rm -rf "$1/root/debs"; : > "$1/etc/machine-id"' \
