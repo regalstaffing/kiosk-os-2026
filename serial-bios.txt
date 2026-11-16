@@ -1,0 +1,73 @@
+=== FAILED UNITS
+  UNIT LOAD ACTIVE SUB DESCRIPTION
+
+0 loaded units listed.
+=== JOURNAL (warnings)
+Nov 16 17:14:20 kiosk kernel: acpi PNP0A03:00: fail to add MMCONFIG information, can't access extended configuration space under this bridge
+Nov 16 17:14:21 kiosk systemd-udevd[464]: /usr/lib/udev/rules.d/90-alsa-restore.rules:18 GOTO="alsa_restore_std" has no matching label, ignoring.
+Nov 16 17:14:21 kiosk systemd-udevd[464]: /usr/lib/udev/rules.d/90-alsa-restore.rules:18 The line has no effect any more, dropping.
+Nov 16 17:14:21 kiosk systemd-udevd[464]: /usr/lib/udev/rules.d/90-alsa-restore.rules:22 GOTO="alsa_restore_std" has no matching label, ignoring.
+Nov 16 17:14:21 kiosk systemd-udevd[464]: /usr/lib/udev/rules.d/90-alsa-restore.rules:22 The line has no effect any more, dropping.
+=== LOGIND
+Nov 16 17:14:21 kiosk systemd[1]: Starting kiosk-live-boot.service - Kiosk (run from stick): load saved settings and block other USB sticks...
+Nov 16 17:14:22 kiosk kiosk-live[628]: kiosk-live: settings saved to the stick
+Nov 16 17:14:22 kiosk kiosk-live[628]: kiosk-live: boot stick: /sys/devices/pci0000:00/0000:00:04.0/usb2/2-1
+Nov 16 17:14:22 kiosk systemd[1]: Finished kiosk-live-boot.service - Kiosk (run from stick): load saved settings and block other USB sticks.
+Nov 16 17:14:24 kiosk systemd[1]: Starting dbus.service - D-Bus System Message Bus...
+Nov 16 17:14:24 kiosk systemd[1]: Starting systemd-logind.service - User Login Management...
+Nov 16 17:14:24 kiosk systemd[1]: Started dbus.service - D-Bus System Message Bus.
+Nov 16 17:14:24 kiosk systemd-logind[937]: New seat seat0.
+Nov 16 17:14:24 kiosk systemd-logind[937]: Watching system buttons on /dev/input/event1 (Power Button)
+Nov 16 17:14:24 kiosk systemd-logind[937]: Watching system buttons on /dev/input/event0 (AT Translated Set 2 keyboard)
+Nov 16 17:14:24 kiosk systemd[1]: Started systemd-logind.service - User Login Management.
+Nov 16 17:14:24 kiosk dbus-daemon[930]: [system] Activating via systemd: service name='org.freedesktop.hostname1' unit='dbus-org.freedesktop.hostname1.service' requested by ':1.6' (uid=0 pid=946 comm="/usr/sbin/NetworkManager --no-daemon")
+Nov 16 17:14:24 kiosk dbus-daemon[930]: [system] Successfully activated service 'org.freedesktop.hostname1'
+Nov 16 17:14:24 kiosk dbus-daemon[930]: [system] Activating via systemd: service name='org.freedesktop.nm_dispatcher' unit='dbus-org.freedesktop.nm-dispatcher.service' requested by ':1.6' (uid=0 pid=946 comm="/usr/sbin/NetworkManager --no-daemon")
+Nov 16 17:14:24 kiosk dbus-daemon[930]: [system] Successfully activated service 'org.freedesktop.nm_dispatcher'
+Nov 16 17:14:24 kiosk systemd[1]: Starting kiosk-setpw.service - Kiosk (run from stick): set the admin password on first start...
+Nov 16 17:14:25 kiosk (cage)[985]: pam_unix(login:session): session opened for user root(uid=0) by root(uid=0)
+Nov 16 17:14:25 kiosk systemd-logind[937]: New session 1 of user root.
+Nov 16 17:14:25 kiosk systemd-logind[937]: New session 2 of user root.
+=== HWID
+PC: QEMU Ubuntu 26.04 PC (i440FX + PIIX, 1996)
+PC ID: mac:52:54:00:12:34:56  (from network card address)
+Network card ens3: 52:54:00:12:34:56 (wired)
+=== END
+=== FAILED UNITS
+  UNIT LOAD ACTIVE SUB DESCRIPTION
+
+0 loaded units listed.
+=== JOURNAL (warnings)
+Nov 16 17:16:53 kiosk kernel: acpi PNP0A03:00: fail to add MMCONFIG information, can't access extended configuration space under this bridge
+Nov 16 17:16:54 kiosk systemd-udevd[460]: /usr/lib/udev/rules.d/90-alsa-restore.rules:18 GOTO="alsa_restore_std" has no matching label, ignoring.
+Nov 16 17:16:54 kiosk systemd-udevd[460]: /usr/lib/udev/rules.d/90-alsa-restore.rules:18 The line has no effect any more, dropping.
+Nov 16 17:16:54 kiosk systemd-udevd[460]: /usr/lib/udev/rules.d/90-alsa-restore.rules:22 GOTO="alsa_restore_std" has no matching label, ignoring.
+Nov 16 17:16:54 kiosk systemd-udevd[460]: /usr/lib/udev/rules.d/90-alsa-restore.rules:22 The line has no effect any more, dropping.
+=== LOGIND
+Nov 16 17:16:54 kiosk systemd[1]: Starting kiosk-live-boot.service - Kiosk (run from stick): load saved settings and block other USB sticks...
+Nov 16 17:16:54 kiosk usermod[659]: change user 'root' password
+Nov 16 17:16:54 kiosk kiosk-live[627]: kiosk-live: boot stick: /sys/devices/pci0000:00/0000:00:04.0/usb2/2-1
+Nov 16 17:16:55 kiosk systemd[1]: Finished kiosk-live-boot.service - Kiosk (run from stick): load saved settings and block other USB sticks.
+Nov 16 17:16:56 kiosk systemd[1]: Starting dbus.service - D-Bus System Message Bus...
+Nov 16 17:16:56 kiosk systemd[1]: Starting systemd-logind.service - User Login Management...
+Nov 16 17:16:56 kiosk systemd[1]: Started dbus.service - D-Bus System Message Bus.
+Nov 16 17:16:56 kiosk systemd-logind[917]: New seat seat0.
+Nov 16 17:16:56 kiosk systemd-logind[917]: Watching system buttons on /dev/input/event1 (Power Button)
+Nov 16 17:16:56 kiosk systemd-logind[917]: Watching system buttons on /dev/input/event0 (AT Translated Set 2 keyboard)
+Nov 16 17:16:56 kiosk systemd[1]: Started systemd-logind.service - User Login Management.
+Nov 16 17:16:57 kiosk dbus-daemon[910]: [system] Activating via systemd: service name='org.freedesktop.hostname1' unit='dbus-org.freedesktop.hostname1.service' requested by ':1.5' (uid=0 pid=926 comm="/usr/sbin/NetworkManager --no-daemon")
+Nov 16 17:16:57 kiosk dbus-daemon[910]: [system] Successfully activated service 'org.freedesktop.hostname1'
+Nov 16 17:16:57 kiosk dbus-daemon[910]: [system] Activating via systemd: service name='org.freedesktop.nm_dispatcher' unit='dbus-org.freedesktop.nm-dispatcher.service' requested by ':1.5' (uid=0 pid=926 comm="/usr/sbin/NetworkManager --no-daemon")
+Nov 16 17:16:57 kiosk dbus-daemon[910]: [system] Successfully activated service 'org.freedesktop.nm_dispatcher'
+Nov 16 17:16:57 kiosk systemd[1]: kiosk-setpw.service - Kiosk (run from stick): set the admin password on first start skipped, unmet condition check ConditionPathExists=/run/kiosk-need-password
+Nov 16 17:16:57 kiosk systemd[1]: Started kiosk.service - Kiosk browser (cage + Chromium).
+Nov 16 17:16:57 kiosk (cage)[965]: pam_unix(login:session): session opened for user kiosk(uid=1000) by kiosk(uid=0)
+Nov 16 17:16:57 kiosk systemd-logind[917]: New session 1 of user kiosk.
+Nov 16 17:16:57 kiosk systemd-logind[917]: New session 2 of user kiosk.
+Nov 16 17:17:05 kiosk dbus-daemon[910]: [system] Activating via systemd: service name='org.freedesktop.UPower' unit='upower.service' requested by ':1.15' (uid=1000 pid=992 comm="/usr/lib/chromium/chromium --show-component-extens")
+Nov 16 17:17:05 kiosk dbus-daemon[910]: [system] Successfully activated service 'org.freedesktop.UPower'
+=== HWID
+PC: QEMU Ubuntu 26.04 PC (i440FX + PIIX, 1996)
+PC ID: mac:52:54:00:12:34:56  (from network card address)
+Network card ens3: 52:54:00:12:34:56 (wired)
+=== END
