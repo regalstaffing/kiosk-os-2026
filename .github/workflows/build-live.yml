@@ -68,8 +68,10 @@ jobs:
             # Test sticks get their own file name so they can't be mixed up with the real one.
             # Only the stick image is renamed: kiosks update from the other files by name.
             IMG="kiosk-os-TEST-$(echo "$GITHUB_REF_NAME" | tr -c 'A-Za-z0-9.\n-' '-')-$(cat out/version).img.xz"
-            mv out/kiosk-os-live.img.xz "out/$IMG"
-            (cd out && rm -f kiosk-os-live.img.xz.sha256 && sha256sum "$IMG" > "$IMG.sha256")
+            # out/ belongs to root (the build runs with sudo).
+            sudo mv out/kiosk-os-live.img.xz "out/$IMG"
+            sudo rm -f out/kiosk-os-live.img.xz.sha256
+            (cd out && sha256sum "$IMG") | sudo tee "out/$IMG.sha256" >/dev/null
           fi
           gh release delete "$TAG" --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
           gh release create "$TAG" -R "$GITHUB_REPOSITORY" --prerelease \
