@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 """Kiosk admin screen (GTK). Started by kiosk-admin.service on Ctrl+Alt+Shift+A.
 
-Shows a password prompt; the root password unlocks Wi-Fi, text console,
-restart and shut down. Leaving the screen starts the kiosk again.
+Shows a password prompt; the root password unlocks Wi-Fi, device settings
+(sound, microphone, camera, brightness), text console, restart and shut down.
+Leaving the screen starts the kiosk again.
 """
 import ctypes
 import re
 import subprocess
+import sys
 import threading
 import time
 
@@ -14,6 +16,15 @@ import gi
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, GLib, Gtk  # noqa: E402
+
+# Device settings are optional: if they fail to load, the rest of the admin
+# screen (Wi-Fi above all) must still open
+sys.path.insert(0, "/usr/local/lib/kiosk")
+try:
+    import kiosk_devices  # noqa: E402
+except Exception as e:  # noqa: BLE001
+    print("Device settings not available:", e, file=sys.stderr)
+    kiosk_devices = None
 
 FAILURES = "/run/kiosk-admin-failures"
 MAX_FAILURES = 5
@@ -120,9 +131,16 @@ class AdminWindow(Gtk.Window):
         self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.NONE)
         self.add(self.stack)
         self.stack.add_named(self.build_login(), "login")
+        self.devices = None
+        if kiosk_devices:
+            try:
+                self.devices = kiosk_devices.DeviceSettings(self)  # adds its own pages
+            except Exception as e:  # noqa: BLE001
+                print("Device settings not available:", e, file=sys.stderr)
         self.stack.add_named(self.build_menu(), "menu")
         self.stack.add_named(self.build_wifi(), "wifi")
         self.show_all()
+        self.stack.set_visible_child_name("login")
         self.fullscreen()
         self.password.grab_focus()
 
@@ -185,6 +203,8 @@ class AdminWindow(Gtk.Window):
         self.status = self.label("", "status")
         box.pack_start(self.status, False, False, 0)
         box.pack_start(self.button("Wi-Fi", self.on_wifi), False, False, 0)
+        if self.devices:
+            box.pack_start(self.button("Device settings", self.devices.open), False, False, 0)
         box.pack_start(self.button("Text console", self.on_console), False, False, 0)
         box.pack_start(self.button("Restart", self.on_restart), False, False, 0)
         box.pack_start(self.button("Shut down", self.on_shutdown), False, False, 0)
