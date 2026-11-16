@@ -61,11 +61,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "$GITHUB_REF" = refs/heads/usb-live ]; then TAG=live-latest; KIND=testing; else TAG=live-test; KIND="TEST BUILD of ${GITHUB_REF_NAME}, not sent to kiosks"; fi
+          IMG=kiosk-os-live.img.xz
+          if [ "$GITHUB_REF" = refs/heads/usb-live ]; then TAG=live-latest; KIND=testing
+          else
+            TAG=live-test; KIND="TEST BUILD of ${GITHUB_REF_NAME}, not sent to kiosks"
+            # Test sticks get their own file name so they can't be mixed up with the real one.
+            # Only the stick image is renamed: kiosks update from the other files by name.
+            IMG="kiosk-os-TEST-$(echo "$GITHUB_REF_NAME" | tr -c 'A-Za-z0-9.\n-' '-')-$(cat out/version).img.xz"
+            mv out/kiosk-os-live.img.xz "out/$IMG"
+            (cd out && rm -f kiosk-os-live.img.xz.sha256 && sha256sum "$IMG" > "$IMG.sha256")
+          fi
           gh release delete "$TAG" --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
           gh release create "$TAG" -R "$GITHUB_REPOSITORY" --prerelease \
             --title "Kiosk OS run-from-stick image ($KIND) $(cat out/version)" \
-            --notes "Write kiosk-os-live.img.xz to a USB stick (8 GB or larger) with balenaEtcher or Rufus, then boot the PC from the stick. Nothing is written to the PC's own drive. The other files are used by kiosks to update themselves. Built from ${GITHUB_SHA}." \
+            --notes "Write $IMG to a USB stick (8 GB or larger) with balenaEtcher or Rufus, then boot the PC from the stick. Nothing is written to the PC's own drive. The other files are used by kiosks to update themselves. Built from ${GITHUB_SHA}." \
             --target "${GITHUB_SHA}" \
-            out/kiosk-os-live.img.xz out/kiosk-os-live.img.xz.sha256 \
+            "out/$IMG" "out/$IMG.sha256" \
             out/version out/vmlinuz out/initrd.img out/filesystem.squashfs out/SHA256SUMS
