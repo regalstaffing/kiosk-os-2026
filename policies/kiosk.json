@@ -114,5 +114,8 @@
   "NewTabPageLocation": "https://www.regalstaffing.com/portal",
   "ShowHomeButton": true,
   "SavingBrowserHistoryDisabled": true,
-  "EnableMediaRouter": false
+  "EnableMediaRouter": false,
+  "AutoplayAllowlist": [
+    "http://127.0.0.1:8099"
+  ]
 }
