@@ -1,5 +1,9 @@
 # Managing kiosks online
 
+> **Stick kiosks are managed in the [Kiosk Manager](https://kiosks.regalstaffing.com)**, not
+> with these files. They use a group file here only if they have never reached the manager.
+> Hard-drive kiosks (branch `main`) use the group files below.
+
 Each kiosk belongs to a **group** (for example a location or a function). A group's
 settings live in one file in this repository: `groups/<name>.toml`. Edit that file
 on GitHub and every kiosk in the group picks up the change by itself.
@@ -44,15 +48,17 @@ On the kiosk, open the admin menu (Ctrl+Alt+Shift+A), choose **Text console** an
     kiosk group                          # show the current group and the ones available
     kiosk group front-desk               # move this kiosk to the front-desk group
 
-## Trying changes on test kiosks first
+## Trying changes on test kiosks first (hard drive)
 
-The `patch-experimental` branch is for testing. Kiosks set to follow it get both
-settings and software changes from that branch instead of `main`:
+A hard-drive kiosk can follow a test branch instead of `main`. It then gets both
+settings and software changes from that branch:
 
-    kiosk group default patch-experimental
+    kiosk group default my-test-branch
 
-Make changes on `patch-experimental` first, check them on a test kiosk, then merge
-them into `main` for every kiosk. To put a test kiosk back: `kiosk group default main`.
+Make changes on the test branch first, check them on a test kiosk, then merge them
+into `main` for every kiosk. To put a test kiosk back: `kiosk group default main`.
+
+Stick kiosks are tested differently: with a test image (see `docs/run-from-stick.md`).
 
 ## If something goes wrong
 
