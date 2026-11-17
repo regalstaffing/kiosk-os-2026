@@ -1,4 +1,4 @@
-# Run-from-stick kiosk (testing)
+# Run-from-stick kiosk
 
 The whole kiosk runs from a USB stick. The PC's own drive is never used: its
 drivers are not even loaded, so Windows (or the hard-drive kiosk) stays exactly
@@ -24,8 +24,29 @@ Remove the stick and restart to get the PC's normal system back.
 ## What is saved on the stick
 
 Only: the admin password (scrambled), the device ID, the group and its last
-working settings. Browser data, logs and Wi-Fi passwords live in memory and are
-gone after a restart.
+working settings, the kiosk manager key and the settings it last sent, and the
+device settings (sound, microphone, camera, brightness) as plain values. The full
+list is `SAVED` in `agent/kiosk-live`. Browser data, logs and Wi-Fi passwords live
+in memory and are gone after a restart.
+
+Device settings are saved as checked values in `devices.json`, never as config
+files (config files can run programs). At start-up `kiosk-devices.service` checks
+them and writes the sound and camera config itself; a value that doesn't check out
+is ignored, and an unreadable camera choice turns the camera off.
+
+## Device settings
+
+Admin menu (Ctrl+Alt+Shift+A) > **Device settings**: pick the speakers and the
+microphone, set the volume, turn the camera on or off, and set the screen
+brightness. Changes are used right away and kept after a restart.
+
+## Looping videos
+
+`http://127.0.0.1:8099/loop?v=VIDEO&start=S&end=E` is the kiosk's own looping
+video page (served by `kiosk-sessiond`): YouTube's player with full screen allowed,
+looping from S to E seconds inside one play, so an ad plays at most once. VIDEO is
+the 11 characters after `v=` in a YouTube link. Set it as a home page in the Kiosk
+Manager with *Add looping video*. Looper websites can't go full screen on the kiosk.
 
 ## Updates
 
@@ -35,6 +56,11 @@ restart. If the new version fails to start, the next restart brings back the
 previous one. The boot menu also has "Kiosk (previous version)".
 On the admin console, `kiosk update` fetches the newest version and restarts now;
 `kiosk check` shows the versions on the stick.
+
+**Test builds.** A build from any branch other than `usb-live` is published as the
+`live-test` release, with an image named `kiosk-os-TEST-<branch>-<version>.img.xz`.
+A stick made from it updates only from `live-test`, never from `live-latest`.
+Re-make it from `kiosk-os-live.img.xz` when testing is over.
 
 ## USB sticks
 
